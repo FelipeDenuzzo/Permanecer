@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    canvas {
+      display: block;
+      touch-action: none;
+    }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+  const cores = [
+    '#E6E0CF','#DFDAE6','#D5E6E2',
+    '#E6E2D5','#DBD8E6','#D0DDE6',
+    '#EBEFFF','#FFDEF0','#E1FFEF'
+  ];
+  document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
+
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const breathPeriod = 8000;
+  const baseRadius = () => Math.min(canvas.width, canvas.height) * 0.18;
+  const breathAmplitude = () => baseRadius() * 0.10;
+
+  let count = 30;
+  let pressing = false;
+  let lastTick = null;
+  let elapsed = 0;
+
+  function getRadius(t) {
+    const phase = (t % breathPeriod) / breathPeriod;
+    const s = (Math.sin(phase * Math.PI * 2 - Math.PI / 2) + 1) / 2;
+    return baseRadius() - breathAmplitude() / 2 + s * breathAmplitude();
+  }
+
+  function draw(ts) {
+    if (!lastTick) lastTick = ts;
+    const delta = ts - lastTick;
+    lastTick = ts;
+    elapsed += delta;
+
+    if (pressing) {
+      count = Math.max(0, count - delta / 1000);
+    } else {
+      count = Math.min(30, count + delta / 1000);
+    }
+
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const r = getRadius(elapsed);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(30,28,25,0.75)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(30,28,25,0.75)';
+    ctx.font = '300 2.2rem Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(Math.ceil(count), cx, cy);
+
+    requestAnimationFrame(draw);
+  }
+
+  requestAnimationFrame(draw);
+
+  document.addEventListener('mousedown', () => pressing = true);
+  document.addEventListener('mouseup', () => pressing = false);
+  document.addEventListener('mouseleave', () => pressing = false);
+  document.addEventListener('touchstart', (e) => { e.preventDefault(); pressing = true; }, { passive: false });
+  document.addEventListener('touchend', (e) => { e.preventDefault(); pressing = false; }, { passive: false });
+  document.addEventListener('touchcancel', () => pressing = false);
+</script>
+</body>
+</html>
