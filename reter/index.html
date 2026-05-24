@@ -19,10 +19,26 @@
       display: block;
       touch-action: none;
     }
+    #voltar {
+      position: fixed;
+      bottom: 1.8rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: Georgia, serif;
+      font-size: 0.85rem;
+      font-weight: 300;
+      color: rgba(30,28,25,0.5);
+      text-decoration: none;
+      letter-spacing: 0.1em;
+      transition: opacity 0.3s;
+      z-index: 10;
+    }
+    #voltar:hover { opacity: 0.3; }
   </style>
 </head>
 <body>
 <canvas id="c"></canvas>
+<a id="voltar" href="../">Permanecer</a>
 <script>
   const cores = [
     '#E6E0CF','#DFDAE6','#D5E6E2',
@@ -91,10 +107,12 @@
 
   requestAnimationFrame(draw);
 
-  document.addEventListener('mousedown', () => pressing = true);
+  document.addEventListener('mousedown', (e) => { if (e.target !== document.getElementById('voltar')) pressing = true; });
   document.addEventListener('mouseup', () => pressing = false);
   document.addEventListener('mouseleave', () => pressing = false);
-  document.addEventListener('touchstart', (e) => { e.preventDefault(); pressing = true; }, { passive: false });
+  document.addEventListener('touchstart', (e) => {
+    if (e.target !== document.getElementById('voltar')) { e.preventDefault(); pressing = true; }
+  }, { passive: false });
   document.addEventListener('touchend', (e) => { e.preventDefault(); pressing = false; }, { passive: false });
   document.addEventListener('touchcancel', () => pressing = false);
 </script>
