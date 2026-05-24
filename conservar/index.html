@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conservar</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    canvas { display: block; touch-action: none; }
+    #voltar {
+      position: fixed;
+      bottom: 1.8rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: Georgia, serif;
+      font-size: 0.85rem;
+      font-weight: 300;
+      color: rgba(30,28,25,0.5);
+      text-decoration: none;
+      letter-spacing: 0.1em;
+      opacity: 0;
+      transition: opacity 4s ease;
+      z-index: 10;
+    }
+    #voltar:hover { opacity: 0.3 !important; }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<a id="voltar" href="../">Permanecer</a>
+<script>
+  const cores = [
+    '#E6E0CF','#DFDAE6','#D5E6E2',
+    '#E6E2D5','#DBD8E6','#D0DDE6',
+    '#EBEFFF','#FFDEF0','#E1FFEF'
+  ];
+  document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
+
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const voltar = document.getElementById('voltar');
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Raios relativos ao menor lado da tela
+  const rOuter  = () => Math.min(canvas.width, canvas.height) * 0.38;
+  const rInner  = () => Math.min(canvas.width, canvas.height) * 0.10;
+  // Zona do intermediário: entre rInner+margem e rOuter-margem
+  const margin  = () => Math.min(canvas.width, canvas.height) * 0.07;
+  const rMin    = () => rInner() + margin();
+  const rMax    = () => rOuter() - margin();
+  const rMid0   = () => (rMin() + rMax()) / 2; // posição central
+
+  // Estado do intermediário (normalizado 0=rMin, 1=rMax)
+  let t = 0.5;
+  const speed = 0.06; // unidades normalizadas por segundo
+
+  let pressing = false;
+  let lastTick = null;
+
+  // Fade
+  const fadeDuration = 4000;
+  let fadeAlpha = 0;
+  let fadeDir = 1;
+  let fadeStart = null;
+  let navigateTo = null;
+
+  function getFade(ts) {
+    if (fadeStart === null) fadeStart = ts;
+    const p = Math.min((ts - fadeStart) / fadeDuration, 1);
+    return fadeDir === 1 ? p : 1 - p;
+  }
+
+  function draw(ts) {
+    if (!lastTick) lastTick = ts;
+    const delta = (ts - lastTick) / 1000;
+    lastTick = ts;
+
+    fadeAlpha = getFade(ts);
+    voltar.style.opacity = fadeAlpha * 0.5;
+
+    if (navigateTo && fadeAlpha <= 0) {
+      window.location.href = navigateTo;
+      return;
+    }
+
+    // Atualiza t
+    if (pressing) {
+      t = Math.max(0, t - speed * delta);
+    } else {
+      t = Math.min(1, t + speed * delta);
+    }
+
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const ro = rOuter();
+    const ri = rInner();
+    const rn = rMin();
+    const rx = rMax();
+    const rm = rn + t * (rx - rn);
+
+    // Proximidade ao menor (0=longe, 1=encostando)
+    const proxInner = 1 - Math.min((rm - rn) / (rMid0() - rn), 1);
+    // Proximidade ao maior
+    const proxOuter = 1 - Math.min((rx - rm) / (rx - rMid0()), 1);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.globalAlpha = fadeAlpha;
+
+    // Círculo externo
+    ctx.beginPath();
+    ctx.arc(cx, cy, ro, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(30,28,25,0.7)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Círculo interno menor
+    ctx.beginPath();
+    ctx.arc(cx, cy, ri, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(30,28,25,0.7)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Escurecimento centro (proxInner)
+    if (proxInner > 0) {
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, ri * 1.5);
+      grad.addColorStop(0, `rgba(30,28,25,${0.55 * proxInner})`);
+      grad.addColorStop(1, 'rgba(30,28,25,0)');
+      ctx.beginPath();
+      ctx.arc(cx, cy, ri * 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    // Vinheta borda (proxOuter)
+    if (proxOuter > 0) {
+      const diag = Math.sqrt(canvas.width ** 2 + canvas.height ** 2) / 2;
+      const grad = ctx.createRadialGradient(cx, cy, ro * 0.7, cx, cy, diag);
+      grad.addColorStop(0, 'rgba(20,18,15,0)');
+      grad.addColorStop(1, `rgba(20,18,15,${0.7 * proxOuter})`);
+      ctx.beginPath();
+      ctx.rect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    // Círculo intermediário
+    ctx.beginPath();
+    ctx.arc(cx, cy, rm, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(30,28,25,0.75)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(draw);
+  }
+
+  requestAnimationFrame(draw);
+
+  voltar.addEventListener('click', function(e) {
+    e.preventDefault();
+    navigateTo = this.href;
+    fadeDir = -1;
+    fadeStart = null;
+  });
+
+  document.addEventListener('mousedown', (e) => { if (e.target !== voltar) pressing = true; });
+  document.addEventListener('mouseup', () => pressing = false);
+  document.addEventListener('mouseleave', () => pressing = false);
+  document.addEventListener('touchstart', (e) => {
+    if (e.target !== voltar) { e.preventDefault(); pressing = true; }
+  }, { passive: false });
+  document.addEventListener('touchend', (e) => { e.preventDefault(); pressing = false; }, { passive: false });
+  document.addEventListener('touchcancel', () => pressing = false);
+</script>
+</body>
+</html>

@@ -34,6 +34,7 @@
 <nav>
   <ul>
     <li><a href="reter/">Reter</a></li>
+    <li><a href="conservar/">Conservar</a></li>
   </ul>
 </nav>
 <script>
@@ -43,11 +44,7 @@
     '#EBEFFF','#FFDEF0','#E1FFEF'
   ];
   document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
-
-  // Fade-in
   requestAnimationFrame(() => document.body.classList.add('visivel'));
-
-  // Fade-out ao sair
   document.querySelectorAll('a').forEach(a => {
     a.addEventListener('click', function(e) {
       e.preventDefault();
