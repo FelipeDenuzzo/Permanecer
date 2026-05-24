@@ -5,38 +5,102 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Permanecer</title>
   <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      margin: 0;
-      font-family: Georgia, serif;
-      background-color: #f5f0eb;
-      color: #2c2c2c;
+      background-color: #f8f7f4;
       display: flex;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
     }
-    main {
-      text-align: center;
-      max-width: 600px;
-      padding: 2rem;
-    }
-    h1 {
-      font-size: 3rem;
-      font-weight: normal;
-      letter-spacing: 0.2em;
-      margin-bottom: 1rem;
-    }
-    p {
-      font-size: 1.1rem;
-      line-height: 1.8;
-      color: #555;
+    canvas {
+      display: block;
+      touch-action: none;
     }
   </style>
 </head>
 <body>
-  <main>
-    <h1>Permanecer</h1>
-    <p>Este é o início de algo.</p>
-  </main>
+<canvas id="c"></canvas>
+<script>
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Respiração: 4s expandir, 4s retrair => 8s ciclo
+  const breathPeriod = 8000;
+  const baseRadius = Math.min(window.innerWidth, window.innerHeight) * 0.18;
+  const breathAmplitude = baseRadius * 0.10;
+
+  let count = 30;
+  let pressing = false;
+  let lastTick = null;
+  let elapsed = 0;
+
+  function getRadius(t) {
+    // seno suave: 0 = menor, PI = maior
+    const phase = (t % breathPeriod) / breathPeriod; // 0..1
+    const s = (Math.sin(phase * Math.PI * 2 - Math.PI / 2) + 1) / 2; // 0..1 suave
+    return baseRadius - breathAmplitude / 2 + s * breathAmplitude;
+  }
+
+  function draw(ts) {
+    if (!lastTick) lastTick = ts;
+    const delta = ts - lastTick;
+    lastTick = ts;
+
+    elapsed += delta;
+
+    // Atualiza contagem
+    if (pressing) {
+      count = Math.max(0, count - delta / 1000);
+    } else {
+      count = Math.min(30, count + delta / 1000);
+    }
+
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const r = getRadius(elapsed);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Círculo
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(30,28,25,0.75)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // Número
+    const display = Math.ceil(count);
+    ctx.fillStyle = 'rgba(30,28,25,0.75)';
+    ctx.font = '300 2.2rem Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(display, cx, cy);
+
+    requestAnimationFrame(draw);
+  }
+
+  requestAnimationFrame(draw);
+
+  // Mouse
+  document.addEventListener('mousedown', () => pressing = true);
+  document.addEventListener('mouseup', () => pressing = false);
+  document.addEventListener('mouseleave', () => pressing = false);
+
+  // Touch
+  document.addEventListener('touchstart', (e) => { e.preventDefault(); pressing = true; }, { passive: false });
+  document.addEventListener('touchend', (e) => { e.preventDefault(); pressing = false; }, { passive: false });
+  document.addEventListener('touchcancel', () => pressing = false);
+</script>
 </body>
 </html>
