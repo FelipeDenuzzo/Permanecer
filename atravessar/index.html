@@ -136,10 +136,11 @@
   function circleStartY()    { return canvas.height - marginBottom() - circleR(); }
   function linesAreaTop()    { return marginTop(); }
   function linesAreaBottom() { return circleStartY() - circleR() - canvas.height * 0.04; }
-  function lineHalfW()       { return canvas.width * 0.44; }
 
-  // quanto o centro da linha sobe quando totalmente aberta
-  function openLift() { return canvas.height * 0.08; }
+  // comprimento de cada segmento (metade visível)
+  function segLen() { return canvas.width * 0.38; }
+  // gap central em repouso (espaço entre as duas metades)
+  function gapRest() { return circleR() * 0; } // sem gap em repouso: tocam no centro
 
   function lineRestY(i) {
     return linesAreaTop() + (i / (N_LINES - 1)) * (linesAreaBottom() - linesAreaTop());
@@ -234,11 +235,11 @@
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const cx   = canvas.width / 2;
-    const cy   = circleY();
-    const r    = circleR();
-    const hw   = lineHalfW();
-    const lift = openLift();
+    const cx  = canvas.width / 2;
+    const cy  = circleY();
+    const r   = circleR();
+    const sl  = segLen();         // comprimento do segmento
+    const edge = canvas.width * 0.03; // margem da borda
 
     ctx.strokeStyle = 'rgba(30,28,25,0.75)';
     ctx.lineWidth   = 1.2;
@@ -248,21 +249,24 @@
       const open  = ease(lineOpen[i]);
       const restY = lineRestY(i);
 
-      // extremidades externas: fixas nas bordas laterais, em restY
-      // ponto central: sobe `lift * open` — o círculo empurra pelo meio
-      const dy       = lift * open;
-      const centerY  = restY - dy;
-
-      // metade esquerda: borda esq (fixa) -> centro (sobe)
+      // Segmento ESQUERDO
+      // repouso:  de (cx - sl) até (cx)          — toca o centro
+      // aberto:   de (edge - sl) até (edge)       — encostado na borda esq
+      // desloca toda a linha para a esquerda por `shift`
+      const shift = (cx - edge) * open;  // quanto desloca para esq
+      const lx1 = cx - sl - shift;
+      const lx2 = cx     - shift;
       ctx.beginPath();
-      ctx.moveTo(cx - hw, restY);   // extremidade externa fixa
-      ctx.lineTo(cx,      centerY); // centro sobe
+      ctx.moveTo(lx1, restY);
+      ctx.lineTo(lx2, restY);
       ctx.stroke();
 
-      // metade direita: centro (sobe) -> borda dir (fixa)
+      // Segmento DIREITO (simétrico)
+      const rx1 = cx     + shift;
+      const rx2 = cx + sl + shift;
       ctx.beginPath();
-      ctx.moveTo(cx,      centerY); // centro sobe
-      ctx.lineTo(cx + hw, restY);   // extremidade externa fixa
+      ctx.moveTo(rx1, restY);
+      ctx.lineTo(rx2, restY);
       ctx.stroke();
     }
 
