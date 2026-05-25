@@ -34,6 +34,32 @@
       pointer-events: none;
       z-index: 100;
     }
+    #quote {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      font-family: 'VeteranTypewriter', serif;
+      color: rgba(30,28,25,0.75);
+      opacity: 0;
+      transition: opacity 1.2s ease;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 50;
+    }
+    #quote .frase {
+      font-size: 0.9rem;
+      letter-spacing: 0.06em;
+      display: block;
+      margin-bottom: 0.4rem;
+    }
+    #quote .autor {
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      opacity: 0.6;
+      display: block;
+    }
     #voltar {
       position: fixed;
       bottom: 1.8rem;
@@ -53,6 +79,10 @@
 <body>
 <div id="flash"></div>
 <canvas id="c"></canvas>
+<div id="quote">
+  <span class="frase">&#8220;Aquilo a que você resiste, persiste.&#8221;</span>
+  <span class="autor">Carl Jung</span>
+</div>
 <a id="voltar" href="../">Permanecer</a>
 <script>
   const cores = [
@@ -62,13 +92,14 @@
   ];
   document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
 
-  const flash = document.getElementById('flash');
+  const flash  = document.getElementById('flash');
   const canvas = document.getElementById('c');
-  const ctx = canvas.getContext('2d');
+  const ctx    = canvas.getContext('2d');
   const voltar = document.getElementById('voltar');
+  const quote  = document.getElementById('quote');
 
   function resize() {
-    canvas.width = window.innerWidth;
+    canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
   }
   resize();
@@ -76,14 +107,26 @@
 
   const breathPeriod    = 8000;
   const baseRadius      = () => Math.min(canvas.width, canvas.height) * 0.18;
-  // amplitude aumentada: era 0.10, agora 0.22
   const breathAmplitude = () => baseRadius() * 0.22;
 
-  let count = 30;
+  let count    = 30;
   let pressing = false;
   let lastTick = null;
-  let elapsed = 0;
-  let leaving = false;
+  let elapsed  = 0;
+  let leaving  = false;
+  let quoteVisible = false;
+
+  // aparece quando count entra abaixo de 20, some quando chega abaixo de 10
+  function updateQuote() {
+    const shouldShow = (count <= 20 && count > 10);
+    if (shouldShow && !quoteVisible) {
+      quote.style.opacity = '1';
+      quoteVisible = true;
+    } else if (!shouldShow && quoteVisible) {
+      quote.style.opacity = '0';
+      quoteVisible = false;
+    }
+  }
 
   function getRadius(t) {
     const phase = (t % breathPeriod) / breathPeriod;
@@ -117,9 +160,11 @@
 
     if (count <= 0) triggerExit('../');
 
-    const cx = canvas.width / 2;
+    updateQuote();
+
+    const cx = canvas.width  / 2;
     const cy = canvas.height / 2;
-    const r = getRadius(elapsed);
+    const r  = getRadius(elapsed);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -151,7 +196,7 @@
   document.addEventListener('mousedown', (e) => {
     if (!isOnVoltar(e.clientX, e.clientY)) pressing = true;
   });
-  document.addEventListener('mouseup', () => pressing = false);
+  document.addEventListener('mouseup',    () => pressing = false);
   document.addEventListener('mouseleave', () => pressing = false);
 
   document.addEventListener('touchstart', (e) => {
@@ -163,7 +208,7 @@
       pressing = true;
     }
   }, { passive: false });
-  document.addEventListener('touchend', (e) => { e.preventDefault(); pressing = false; }, { passive: false });
+  document.addEventListener('touchend',   (e) => { e.preventDefault(); pressing = false; }, { passive: false });
   document.addEventListener('touchcancel', () => pressing = false);
 </script>
 </body>
