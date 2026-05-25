@@ -32,6 +32,35 @@
       pointer-events: none;
       z-index: 100;
     }
+    #quote {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      font-family: 'VeteranTypewriter', serif;
+      color: rgba(30,28,25,0.75);
+      opacity: 0;
+      transition: opacity 1.2s ease;
+      pointer-events: none;
+      white-space: normal;
+      width: 80vw;
+      max-width: 360px;
+      z-index: 50;
+    }
+    #quote .frase {
+      font-size: 0.9rem;
+      letter-spacing: 0.06em;
+      line-height: 1.5;
+      display: block;
+      margin-bottom: 0.4rem;
+    }
+    #quote .autor {
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      opacity: 0.6;
+      display: block;
+    }
     #voltar {
       position: fixed;
       bottom: 1.8rem;
@@ -51,6 +80,10 @@
 <body>
 <div id="flash"></div>
 <canvas id="c"></canvas>
+<div id="quote">
+  <span class="frase"></span>
+  <span class="autor"></span>
+</div>
 <a id="voltar" href="../">Permanecer</a>
 <script>
   const cores = [
@@ -60,10 +93,29 @@
   ];
   document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
 
+  const frases = [
+    {
+      html: '\u201cNo meio do caminho tinha uma pedra<br>tinha uma pedra<br>no meio do caminho.\u201d',
+      autor: 'Carlos Drummond de Andrade'
+    },
+    {
+      html: '\u201cUm navio no porto est\u00e1 seguro<br>\u2014 mas n\u00e3o \u00e9 para isso<br>que os navios foram feitos.\u201d',
+      autor: 'G.T. Shedd'
+    },
+    {
+      html: '\u201cN\u00e3o \u00e9 porque as coisas s\u00e3o dif\u00edceis<br>que n\u00e3o ousamos<br>\u2014 \u00e9 porque n\u00e3o ousamos<br>que as coisas s\u00e3o dif\u00edceis.\u201d',
+      autor: 'S\u00eaneca'
+    },
+  ];
+  const escolha = frases[Math.floor(Math.random() * frases.length)];
+  document.querySelector('#quote .frase').innerHTML = escolha.html;
+  document.querySelector('#quote .autor').textContent = escolha.autor;
+
   const flash  = document.getElementById('flash');
   const canvas = document.getElementById('c');
   const ctx    = canvas.getContext('2d');
   const voltar = document.getElementById('voltar');
+  const quote  = document.getElementById('quote');
 
   function resize() {
     canvas.width  = window.innerWidth;
@@ -72,58 +124,34 @@
   resize();
   window.addEventListener('resize', resize);
 
-  // ── constantes ────────────────────────────────────────────────────────
   const N_LINES     = 10;
-  const TOTAL_TIME  = 29;   // segundos para subir tudo
+  const TOTAL_TIME  = 29;
   const COUNT_START = 30;
-  const CLOSE_SPEED = 0.6;  // velocidade de retrocesso
+  const CLOSE_SPEED = 0.6;
+  const LINE_TIME   = TOTAL_TIME / N_LINES;
 
-  // raio do círculo
-  function circleR() { return Math.min(canvas.width, canvas.height) * 0.055; }
-
-  // margens verticais
+  function circleR()      { return Math.min(canvas.width, canvas.height) * 0.055; }
   function marginTop()    { return canvas.height * 0.08; }
   function marginBottom() { return canvas.height * 0.10; }
-
-  // y inicial do círculo (centro)
   function circleStartY() { return canvas.height - marginBottom() - circleR(); }
-
-  // área disponível para as linhas
   function linesAreaTop()    { return marginTop(); }
   function linesAreaBottom() { return circleStartY() - circleR() - canvas.height * 0.04; }
+  function lineHalfW()    { return canvas.width * 0.38; }
 
-  // y de cada linha em repouso (0 = topo, 9 = base)
   function lineRestY(i) {
-    const top    = linesAreaTop();
-    const bottom = linesAreaBottom();
-    return top + (i / (N_LINES - 1)) * (bottom - top);
+    return linesAreaTop() + (i / (N_LINES - 1)) * (linesAreaBottom() - linesAreaTop());
   }
 
-  // metade da largura de cada segmento de linha em repouso
-  function lineHalfW() { return canvas.width * 0.38; }
-
-  // ── estado ────────────────────────────────────────────────────────────
   let pressed  = false;
-  let progress = 0;          // 0..TOTAL_TIME segundos
+  let progress = 0;
   let count    = COUNT_START;
   let leaving  = false;
   let finished = false;
-
-  // Para cada linha: o quanto suas metades estão abertas (0=fechada, 1=totalmente aberta)
-  // aberta = metades nas bordas, na vertical
+  let quoteVisible = false;
   const lineOpen = new Array(N_LINES).fill(0);
 
-  // ── qual linha está sendo atravessada agora ───────────────────────────
-  // o círculo atravessa as linhas de baixo para cima: linha 9 primeiro, linha 0 por último
-  // cada linha ocupa TOTAL_TIME / N_LINES segundos
-  const LINE_TIME = TOTAL_TIME / N_LINES;
-
-  // índice da linha que o círculo está atravessando agora (9=base, 0=topo)
-  // a linha i (de baixo para cima) é atravessada quando progress está entre
-  // (N_LINES-1-i)*LINE_TIME e (N_LINES-i)*LINE_TIME
   function lineProgress(i) {
-    // i: 0=topo, 9=base; atravessa de 9→0
-    const order = N_LINES - 1 - i; // 0=primeira (linha 9), 9=última (linha 0)
+    const order = N_LINES - 1 - i;
     const t0 = order * LINE_TIME;
     const t1 = t0 + LINE_TIME;
     if (progress <= t0) return 0;
@@ -131,20 +159,29 @@
     return (progress - t0) / LINE_TIME;
   }
 
-  // posição Y do círculo interpolada
   function circleY() {
     const startY = circleStartY();
-    // destino: acima da linha 0 (topo)
-    const endY = linesAreaTop() - circleR() * 0.5;
+    const endY   = linesAreaTop() - circleR() * 0.5;
     return startY - (progress / TOTAL_TIME) * (startY - endY);
   }
 
-  // ── easing suave ──────────────────────────────────────────────────────
   function ease(t) {
     return t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
   }
 
-  // ── saída ─────────────────────────────────────────────────────────────
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  function updateQuote() {
+    const shouldShow = (count <= 20 && count > 10);
+    if (shouldShow && !quoteVisible) {
+      quote.style.opacity = '1';
+      quoteVisible = true;
+    } else if (!shouldShow && quoteVisible) {
+      quote.style.opacity = '0';
+      quoteVisible = false;
+    }
+  }
+
   function triggerExit() {
     if (leaving) return;
     leaving = true;
@@ -157,7 +194,6 @@
     return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   }
 
-  // ── loop ──────────────────────────────────────────────────────────────
   let lastTick = null;
   let doneTimer = 0;
 
@@ -178,13 +214,12 @@
         progress = Math.max(0, progress - delta * CLOSE_SPEED);
         count    = Math.min(COUNT_START, count + delta * CLOSE_SPEED);
       }
+      updateQuote();
     } else {
-      // espera 1s e sai
       doneTimer += delta;
       if (doneTimer >= 1) triggerExit();
     }
 
-    // atualiza abertura de cada linha
     for (let i = 0; i < N_LINES; i++) {
       lineOpen[i] = lineProgress(i);
     }
@@ -193,15 +228,13 @@
     requestAnimationFrame(loop);
   }
 
-  // ── desenho ───────────────────────────────────────────────────────────
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const cx   = canvas.width / 2;
-    const cy   = circleY();
-    const r    = circleR();
-    const hw   = lineHalfW();
-    const gap  = r * 1.2; // espaço de abertura ao centro
+    const cx = canvas.width / 2;
+    const cy = circleY();
+    const r  = circleR();
+    const hw = lineHalfW();
 
     ctx.strokeStyle = 'rgba(30,28,25,0.75)';
     ctx.lineWidth   = 1.2;
@@ -212,45 +245,18 @@
       const restY = lineRestY(i);
 
       // metade esquerda
-      // fechada: horizontal de (cx - hw) a cx
-      // aberta:  vertical na borda esquerda
-      // interpolamos: x fixo na borda esq, y vai de restY até centro vertical
-      const leftX1_closed  = cx - hw;
-      const leftX2_closed  = cx;
-      const leftX1_open    = canvas.width * 0.04;
-      const leftX2_open    = canvas.width * 0.04;
-      const leftY1_open    = restY - hw * 0.5;
-      const leftY2_open    = restY + hw * 0.5;
-
-      // posição intermediária
-      // x: desliza da posição original para a borda
-      const lx1 = lerp(leftX1_closed, leftX1_open,  open);
-      const ly1 = lerp(restY,          leftY1_open,  open);
-      const lx2 = lerp(leftX2_closed, leftX2_open,  open);
-      const ly2 = lerp(restY,          leftY2_open,  open);
-
-      ctx.beginPath();
-      ctx.moveTo(lx1, ly1);
-      ctx.lineTo(lx2, ly2);
-      ctx.stroke();
+      const lx1 = lerp(cx - hw,              canvas.width * 0.04, open);
+      const ly1 = lerp(restY,                restY - hw * 0.5,    open);
+      const lx2 = lerp(cx,                   canvas.width * 0.04, open);
+      const ly2 = lerp(restY,                restY + hw * 0.5,    open);
+      ctx.beginPath(); ctx.moveTo(lx1, ly1); ctx.lineTo(lx2, ly2); ctx.stroke();
 
       // metade direita
-      const rightX1_closed = cx;
-      const rightX2_closed = cx + hw;
-      const rightX1_open   = canvas.width * 0.96;
-      const rightX2_open   = canvas.width * 0.96;
-      const rightY1_open   = restY - hw * 0.5;
-      const rightY2_open   = restY + hw * 0.5;
-
-      const rx1 = lerp(rightX1_closed, rightX1_open,  open);
-      const ry1 = lerp(restY,           rightY1_open,  open);
-      const rx2 = lerp(rightX2_closed, rightX2_open,  open);
-      const ry2 = lerp(restY,           rightY2_open,  open);
-
-      ctx.beginPath();
-      ctx.moveTo(rx1, ry1);
-      ctx.lineTo(rx2, ry2);
-      ctx.stroke();
+      const rx1 = lerp(cx,                   canvas.width * 0.96, open);
+      const ry1 = lerp(restY,                restY - hw * 0.5,    open);
+      const rx2 = lerp(cx + hw,              canvas.width * 0.96, open);
+      const ry2 = lerp(restY,                restY + hw * 0.5,    open);
+      ctx.beginPath(); ctx.moveTo(rx1, ry1); ctx.lineTo(rx2, ry2); ctx.stroke();
     }
 
     // círculo
@@ -270,9 +276,6 @@
     }
   }
 
-  function lerp(a, b, t) { return a + (b - a) * t; }
-
-  // ── eventos ───────────────────────────────────────────────────────────
   function onStart(x, y) {
     if (leaving || finished) return;
     if (isOnVoltar(x, y)) { triggerExit(); return; }
