@@ -77,7 +77,8 @@
   const neutralBand = 0.15;
 
   let t = 0.5;
-  const speed = 0.06;
+  const speedExpand  = 0.18; // velocidade de expansão natural
+  const speedRetract = 0.18; // velocidade de retração ao pressionar
   let pressing = false;
   let lastTick = null;
   let count = 30;
@@ -100,26 +101,19 @@
   function drawVinheta(alpha) {
     const w = canvas.width;
     const h = canvas.height;
-    const depth = 0.45; // quão longe a vinheta entra na tela (0..1)
+    const depth = 0.45;
     const color = `rgba(15,13,10,${alpha})`;
     const transparent = 'rgba(15,13,10,0)';
-
-    // topo
-    let g = ctx.createLinearGradient(0, 0, 0, h * depth);
+    let g;
+    g = ctx.createLinearGradient(0, 0, 0, h * depth);
     g.addColorStop(0, color); g.addColorStop(1, transparent);
     ctx.fillStyle = g; ctx.fillRect(0, 0, w, h * depth);
-
-    // base
     g = ctx.createLinearGradient(0, h, 0, h - h * depth);
     g.addColorStop(0, color); g.addColorStop(1, transparent);
     ctx.fillStyle = g; ctx.fillRect(0, h - h * depth, w, h * depth);
-
-    // esquerda
     g = ctx.createLinearGradient(0, 0, w * depth, 0);
     g.addColorStop(0, color); g.addColorStop(1, transparent);
     ctx.fillStyle = g; ctx.fillRect(0, 0, w * depth, h);
-
-    // direita
     g = ctx.createLinearGradient(w, 0, w - w * depth, 0);
     g.addColorStop(0, color); g.addColorStop(1, transparent);
     ctx.fillStyle = g; ctx.fillRect(w - w * depth, 0, w * depth, h);
@@ -131,9 +125,9 @@
     lastTick = ts;
 
     if (pressing) {
-      t = Math.max(0, t - speed * delta);
+      t = Math.max(0, t - speedRetract * delta);
     } else {
-      t = Math.min(1, t + speed * delta);
+      t = Math.min(1, t + speedExpand * delta);
     }
 
     if (started && count > 0) {
@@ -155,7 +149,6 @@
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Círculos externos e interno
     ctx.beginPath();
     ctx.arc(cx, cy, ro, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(30,28,25,0.7)';
@@ -168,7 +161,6 @@
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Degradê central radial
     if (proxInner > 0) {
       const gradRadius = ro * 0.80;
       const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, gradRadius);
@@ -182,19 +174,14 @@
       ctx.fill();
     }
 
-    // Vinheta de borda: 4 gradientes lineares
-    if (proxOuter > 0) {
-      drawVinheta(0.97 * proxOuter);
-    }
+    if (proxOuter > 0) drawVinheta(0.97 * proxOuter);
 
-    // Círculo intermediário
     ctx.beginPath();
     ctx.arc(cx, cy, rm, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(30,28,25,0.75)';
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    // Número
     if (started) {
       ctx.fillStyle = 'rgba(30,28,25,0.75)';
       ctx.font = '2.2rem "VeteranTypewriter", serif';
@@ -211,9 +198,7 @@
     requestAnimationFrame(() => flash.style.opacity = '0');
   });
 
-  function startIfNeeded() {
-    if (!started) started = true;
-  }
+  function startIfNeeded() { if (!started) started = true; }
 
   voltar.addEventListener('click', function(e) {
     e.preventDefault();
