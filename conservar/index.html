@@ -10,17 +10,20 @@
       src: url('../fonts/veteran typewriter.ttf') format('truetype');
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
+    html, body {
+      width: 100%; height: 100%;
       overflow: hidden;
       user-select: none;
       -webkit-user-select: none;
       background-color: #ffffff;
     }
-    canvas { display: block; touch-action: none; }
+    canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      touch-action: none;
+      pointer-events: none;
+    }
     #flash {
       position: fixed;
       inset: 0;
@@ -40,7 +43,8 @@
       color: rgba(30,28,25,0.5);
       text-decoration: none;
       letter-spacing: 0.1em;
-      z-index: 10;
+      z-index: 200;
+      padding: 1rem 1.5rem;
     }
     #voltar:hover { opacity: 0.3; }
   </style>
@@ -77,8 +81,8 @@
   const neutralBand = 0.15;
 
   let t = 0.5;
-  const speedExpand  = 0.18; // velocidade de expansão natural
-  const speedRetract = 0.18; // velocidade de retração ao pressionar
+  const speedExpand  = 0.18;
+  const speedRetract = 0.18;
   let pressing = false;
   let lastTick = null;
   let count = 30;
@@ -117,6 +121,11 @@
     g = ctx.createLinearGradient(w, 0, w - w * depth, 0);
     g.addColorStop(0, color); g.addColorStop(1, transparent);
     ctx.fillStyle = g; ctx.fillRect(w - w * depth, 0, w * depth, h);
+  }
+
+  function isOnVoltar(x, y) {
+    const r = voltar.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   }
 
   function draw(ts) {
@@ -206,12 +215,19 @@
   });
 
   document.addEventListener('mousedown', (e) => {
-    if (e.target !== voltar) { pressing = true; startIfNeeded(); }
+    if (!isOnVoltar(e.clientX, e.clientY)) { pressing = true; startIfNeeded(); }
   });
   document.addEventListener('mouseup', () => pressing = false);
   document.addEventListener('mouseleave', () => pressing = false);
   document.addEventListener('touchstart', (e) => {
-    if (e.target !== voltar) { e.preventDefault(); pressing = true; startIfNeeded(); }
+    const touch = e.touches[0];
+    if (isOnVoltar(touch.clientX, touch.clientY)) {
+      triggerExit('../');
+    } else {
+      e.preventDefault();
+      pressing = true;
+      startIfNeeded();
+    }
   }, { passive: false });
   document.addEventListener('touchend', (e) => { e.preventDefault(); pressing = false; }, { passive: false });
   document.addEventListener('touchcancel', () => pressing = false);
