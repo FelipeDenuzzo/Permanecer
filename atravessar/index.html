@@ -130,13 +130,16 @@
   const CLOSE_SPEED = 0.6;
   const LINE_TIME   = TOTAL_TIME / N_LINES;
 
-  function circleR()      { return Math.min(canvas.width, canvas.height) * 0.055; }
-  function marginTop()    { return canvas.height * 0.08; }
-  function marginBottom() { return canvas.height * 0.10; }
-  function circleStartY() { return canvas.height - marginBottom() - circleR(); }
+  function circleR()         { return Math.min(canvas.width, canvas.height) * 0.055; }
+  function marginTop()       { return canvas.height * 0.08; }
+  function marginBottom()    { return canvas.height * 0.10; }
+  function circleStartY()    { return canvas.height - marginBottom() - circleR(); }
   function linesAreaTop()    { return marginTop(); }
   function linesAreaBottom() { return circleStartY() - circleR() - canvas.height * 0.04; }
-  function lineHalfW()    { return canvas.width * 0.38; }
+  function lineHalfW()       { return canvas.width * 0.38; }
+
+  // distância que cada metade sobe ao abrir totalmente
+  function openLift() { return lineHalfW() * 0.5; }
 
   function lineRestY(i) {
     return linesAreaTop() + (i / (N_LINES - 1)) * (linesAreaBottom() - linesAreaTop());
@@ -231,10 +234,11 @@
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const cx = canvas.width / 2;
-    const cy = circleY();
-    const r  = circleR();
-    const hw = lineHalfW();
+    const cx   = canvas.width / 2;
+    const cy   = circleY();
+    const r    = circleR();
+    const hw   = lineHalfW();
+    const lift = openLift();
 
     ctx.strokeStyle = 'rgba(30,28,25,0.75)';
     ctx.lineWidth   = 1.2;
@@ -244,19 +248,36 @@
       const open  = ease(lineOpen[i]);
       const restY = lineRestY(i);
 
-      // metade esquerda
-      const lx1 = lerp(cx - hw,              canvas.width * 0.04, open);
-      const ly1 = lerp(restY,                restY - hw * 0.5,    open);
-      const lx2 = lerp(cx,                   canvas.width * 0.04, open);
-      const ly2 = lerp(restY,                restY + hw * 0.5,    open);
-      ctx.beginPath(); ctx.moveTo(lx1, ly1); ctx.lineTo(lx2, ly2); ctx.stroke();
+      // Cada metade:
+      // fechada  → horizontal, partindo do centro (cx) para cada lado
+      // aberta   → o ponto pivot (extremidade interna, junto ao centro)
+      //            sobe `lift` px; a extremidade externa sobe o dobro.
+      //            Resultado: linha inclinada com ponta interna mais alta,
+      //            abrindo como uma porta basculante para cima.
 
-      // metade direita
-      const rx1 = lerp(cx,                   canvas.width * 0.96, open);
-      const ry1 = lerp(restY,                restY - hw * 0.5,    open);
-      const rx2 = lerp(cx + hw,              canvas.width * 0.96, open);
-      const ry2 = lerp(restY,                restY + hw * 0.5,    open);
-      ctx.beginPath(); ctx.moveTo(rx1, ry1); ctx.lineTo(rx2, ry2); ctx.stroke();
+      const dy_inner = lift * open;        // quanto a ponta do centro sobe
+      const dy_outer = lift * 2 * open;    // quanto a ponta externa sobe
+
+      // metade esquerda: de (cx - hw, restY) até (cx, restY)
+      //   abertura: extremidade externa (esq) sobe dy_outer, interna sobe dy_inner
+      const lx1 = cx - hw;
+      const ly1 = restY - dy_outer;
+      const lx2 = cx;
+      const ly2 = restY - dy_inner;
+      ctx.beginPath();
+      ctx.moveTo(lx1, ly1);
+      ctx.lineTo(lx2, ly2);
+      ctx.stroke();
+
+      // metade direita: de (cx, restY) até (cx + hw, restY)
+      const rx1 = cx;
+      const ry1 = restY - dy_inner;
+      const rx2 = cx + hw;
+      const ry2 = restY - dy_outer;
+      ctx.beginPath();
+      ctx.moveTo(rx1, ry1);
+      ctx.lineTo(rx2, ry2);
+      ctx.stroke();
     }
 
     // círculo
