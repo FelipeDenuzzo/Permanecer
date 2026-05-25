@@ -22,7 +22,6 @@
       top: 0; left: 0;
       width: 100%; height: 100%;
       touch-action: none;
-      pointer-events: none;
     }
     #flash {
       position: fixed;
@@ -71,35 +70,48 @@
     canvas.height = window.innerHeight;
   }
   resize();
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', () => { resize(); initPositions(); });
 
-  const R = () => Math.min(canvas.width, canvas.height) * 0.09;
+  // ── raios ──────────────────────────────────────────────────────────────
+  function rSmall() { return Math.min(canvas.width, canvas.height) * 0.055; }
+  function rLarge() { return Math.min(canvas.width, canvas.height) * 0.10; }
 
-  let phase = 'intro';
-  let introProgress = 0;
-  const introDuration = 9000;
+  // ── posições base ──────────────────────────────────────────────────────
+  // pequeno: fixo, topo (25% da altura)
+  // grande:  bottom (75% da altura), com física
+  let smallX, smallY;
+  let largeX, largeY, largeVX, largeVY;
 
-  let lineX = 0;
-  let lineXTarget = 0;
-  const lineSpeed = 700;
+  function initPositions() {
+    smallX = canvas.width / 2;
+    smallY = canvas.height * 0.25;
+    largeX = canvas.width / 2;
+    largeY = canvas.height * 0.75;
+    largeVX = 0;
+    largeVY = 0;
+  }
+  initPositions();
 
-  let circleAngle = 0;
-  let circleAngleVel = 0;
-  let tiltDir = 1;
-
-  // Tempo desde o início da interação — gravidade cresce com ele
-  let activeTime = 0;
-  const gravityRampDuration = 6000; // ms para atingir gravidade máxima
-  const gravityMax = 0.00012;
-
-  let count = 30;
-  let started = false;
+  // ── estado ─────────────────────────────────────────────────────────────
+  let pressed = false;
+  let countdownStarted = false;
+  let count = 30;           // segundos
   let leaving = false;
 
-  let dragging = false;
-  let dragStartX = 0;
-  let dragStartLineX = 0;
+  // animação do contorno do círculo pequeno
+  let strokeExtra = 0;      // extra de raio do contorno (0 → max)
+  const strokeExtraMax = 6;
+  const strokeGrowSpeed  = 80;  // px/s
+  const strokeShrinkSpeed = 60;
 
+  // ── física ─────────────────────────────────────────────────────────────
+  const GRAVITY      = 280;   // px/s²  — puxa o grande para baixo
+  const DAMPING      = 0.018; // amortecimento por frame (multiplicativo)
+  const MAG_STRENGTH = 1800;  // força do ímã (px/s² normalizada * dist)
+  const MAG_CURVE    = 0.6;   // expoente da curva de atração (< 1 = curva suave)
+  const REST_SPRING  = 1.2;   // mola de retorno à posição base (quando solto)
+
+  // ── saída ──────────────────────────────────────────────────────────────
   function triggerExit(href) {
     if (leaving) return;
     leaving = true;
@@ -112,147 +124,104 @@
     return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   }
 
-  function lineXMin() { return R(); }
-  function lineXMax() { return canvas.width - R(); }
-
-  function pivotY() { return canvas.height * 0.52; }
-  function lineHeight() { return R() * 2; }
-
-  function circleCenterReal() {
-    return {
-      x: lineX + Math.sin(circleAngle) * R(),
-      y: pivotY() - Math.cos(circleAngle) * R()
-    };
+  // ── hit test no círculo pequeno ────────────────────────────────────────
+  function hitSmall(x, y) {
+    const dx = x - smallX, dy = y - smallY;
+    return Math.sqrt(dx*dx + dy*dy) <= rSmall() + 12;
   }
 
-  function startInteraction() {
-    if (phase !== 'idle') return;
-    phase = 'active';
-    started = true;
-    activeTime = 0;
-    tiltDir = Math.random() < 0.5 ? 1 : -1;
-  }
-
-  function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
-  function easeInOut(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+  // ── loop ───────────────────────────────────────────────────────────────
+  let lastTick = null;
 
   function update(delta) {
-    if (phase === 'intro') {
-      introProgress = Math.min(introProgress + delta / introDuration, 1);
-      if (introProgress >= 1) {
-        phase = 'idle';
-        lineX = canvas.width / 2;
-        lineXTarget = lineX;
-      }
-      return;
+    const dt = delta / 1000; // segundos
+
+    // animação do contorno
+    if (pressed) {
+      strokeExtra = Math.min(strokeExtraMax, strokeExtra + strokeGrowSpeed * dt);
+    } else {
+      strokeExtra = Math.max(0, strokeExtra - strokeShrinkSpeed * dt);
     }
 
-    const lerpFactor = 1 - Math.pow(0.01, delta / lineSpeed);
-    lineX += (lineXTarget - lineX) * lerpFactor;
-    lineX = Math.max(lineXMin(), Math.min(lineXMax(), lineX));
+    // física do círculo grande
+    const baseX = canvas.width / 2;
+    const baseY = canvas.height * 0.75;
 
-    if (phase === 'active') {
-      activeTime += delta;
+    if (pressed) {
+      // força magnética em direção ao círculo pequeno
+      const dx = smallX - largeX;
+      const dy = smallY - largeY;
+      const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+      const nx = dx / dist;
+      const ny = dy / dist;
+      // força cresce com curva suave conforme a distância
+      const forceMag = MAG_STRENGTH * Math.pow(dist / (rLarge() * 4), MAG_CURVE);
+      largeVX += nx * forceMag * dt;
+      largeVY += ny * forceMag * dt;
+    } else {
+      // gravidade
+      largeVY += GRAVITY * dt;
+      // mola de retorno suave à posição base
+      largeVX += (baseX - largeX) * REST_SPRING * dt;
+      largeVY += (baseY - largeY) * REST_SPRING * dt;
+    }
 
-      // Gravidade cresce suavemente do zero até gravityMax
-      const ramp = Math.min(activeTime / gravityRampDuration, 1);
-      const gravity = gravityMax * ramp * ramp; // quadrático: começa quasi-zero
+    // amortecimento
+    const damp = 1 - DAMPING * (delta / 16);
+    largeVX *= damp;
+    largeVY *= damp;
 
-      const damping = 0.994;
-      const restore = 0.00012;
+    largeX += largeVX * dt;
+    largeY += largeVY * dt;
 
-      circleAngleVel += tiltDir * gravity * delta;
-      circleAngleVel -= restore * circleAngle * delta;
-      circleAngleVel *= Math.pow(damping, delta / 16);
-      circleAngle += circleAngleVel * delta / 16;
+    // colisão com bordas
+    const rl = rLarge();
+    if (largeX - rl < 0)               { largeX = rl;                   largeVX *= -0.4; }
+    if (largeX + rl > canvas.width)    { largeX = canvas.width - rl;    largeVX *= -0.4; }
+    if (largeY - rl < 0)               { largeY = rl;                   largeVY *= -0.4; }
+    if (largeY + rl > canvas.height)   { largeY = canvas.height - rl;   largeVY *= -0.4; }
 
-      const center = circleCenterReal();
-      const r = R();
-
-      if (center.x - r <= 0) {
-        const maxA = Math.asin(Math.min(1, lineX / r));
-        circleAngle = Math.max(circleAngle, -maxA);
-        if (circleAngleVel < 0) circleAngleVel = 0;
-      }
-      if (center.x + r >= canvas.width) {
-        const maxA = Math.asin(Math.min(1, (canvas.width - lineX) / r));
-        circleAngle = Math.min(circleAngle, maxA);
-        if (circleAngleVel > 0) circleAngleVel = 0;
-      }
-
-      const maxAngle = Math.PI / 2 * 0.93;
-      circleAngle = Math.max(-maxAngle, Math.min(maxAngle, circleAngle));
-
-      if (count > 0) {
-        count = Math.max(0, count - delta / 1000);
-        if (count <= 0) triggerExit('../');
-      }
+    // contagem regressiva
+    if (countdownStarted && pressed && count > 0) {
+      count = Math.max(0, count - dt);
+      if (count <= 0) triggerExit('../');
     }
   }
 
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const r = R();
-    const py = pivotY();
-    const lh = lineHeight();
-    const cx = canvas.width / 2;
 
-    if (phase === 'intro') {
-      const eL = easeInOut(introProgress);
-      const eC = easeOutQuart(introProgress);
+    const rs = rSmall();
+    const rl = rLarge();
 
+    // ── círculo grande (inferior, com física) ──────────────────────────
+    ctx.strokeStyle = 'rgba(30,28,25,0.65)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(largeX, largeY, rl, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // ── círculo pequeno (fixo, topo) ──────────────────────────────────
+    // contorno progressivo quando pressionado
+    const strokeR = rs + strokeExtra;
+    ctx.strokeStyle = 'rgba(30,28,25,0.75)';
+    ctx.lineWidth = pressed ? 1.8 : 1.2;
+    ctx.beginPath();
+    ctx.arc(smallX, smallY, strokeR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // ── contagem regressiva (acima do círculo pequeno) ─────────────────
+    if (countdownStarted) {
       ctx.save();
-      ctx.globalAlpha = eL;
-      ctx.strokeStyle = 'rgba(30,28,25,0.75)';
-      ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      ctx.moveTo(cx, py);
-      ctx.lineTo(cx, py + lh * eL);
-      ctx.stroke();
+      ctx.fillStyle = 'rgba(30,28,25,0.75)';
+      ctx.font = `1.3rem "VeteranTypewriter", serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(Math.ceil(count), smallX, smallY - strokeR - 10);
       ctx.restore();
-
-      const circleStartY = -r * 2;
-      const circleTargetY = py - r;
-      const circleY = circleStartY + (circleTargetY - circleStartY) * eC;
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, introProgress * 3);
-      ctx.strokeStyle = 'rgba(30,28,25,0.75)';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.arc(cx, circleY, r, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-
-    } else {
-      ctx.strokeStyle = 'rgba(30,28,25,0.75)';
-      ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      ctx.moveTo(lineX, py);
-      ctx.lineTo(lineX, py + lh);
-      ctx.stroke();
-
-      const center = circleCenterReal();
-      ctx.strokeStyle = 'rgba(30,28,25,0.75)';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
-      ctx.stroke();
-
-      if (started && count > 0) {
-        const alpha = Math.min(1, (30 - count) / 3) * 0.75;
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = 'rgba(30,28,25,1)';
-        ctx.font = `1.4rem "VeteranTypewriter", serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(Math.ceil(count), center.x, center.y);
-        ctx.restore();
-      }
     }
   }
 
-  let lastTick = null;
   function loop(ts) {
     if (!lastTick) lastTick = ts;
     const delta = ts - lastTick;
@@ -267,38 +236,33 @@
     requestAnimationFrame(() => flash.style.opacity = '0');
   });
 
+  // ── eventos ────────────────────────────────────────────────────────────
   function onStart(x, y) {
+    if (leaving) return;
     if (isOnVoltar(x, y)) { triggerExit('../'); return; }
-    startInteraction();
-    dragging = true;
-    dragStartX = x;
-    dragStartLineX = lineX;
+    if (hitSmall(x, y)) {
+      pressed = true;
+      if (!countdownStarted) countdownStarted = true;
+    }
   }
 
-  function onMove(x) {
-    if (!dragging) return;
-    const dx = x - dragStartX;
-    lineXTarget = Math.max(lineXMin(), Math.min(lineXMax(), dragStartLineX + dx));
+  function onEnd() {
+    pressed = false;
   }
 
-  function onEnd() { dragging = false; }
-
-  document.addEventListener('mousedown', e => onStart(e.clientX, e.clientY));
-  document.addEventListener('mousemove', e => { if (dragging) onMove(e.clientX); });
+  // mouse
+  canvas.addEventListener('mousedown', e => onStart(e.clientX, e.clientY));
   document.addEventListener('mouseup', onEnd);
   document.addEventListener('mouseleave', onEnd);
 
-  document.addEventListener('touchstart', e => {
+  // touch
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
     const t = e.touches[0];
-    if (!isOnVoltar(t.clientX, t.clientY)) e.preventDefault();
     onStart(t.clientX, t.clientY);
   }, { passive: false });
-  document.addEventListener('touchmove', e => {
-    e.preventDefault();
-    onMove(e.touches[0].clientX);
-  }, { passive: false });
-  document.addEventListener('touchend', e => { e.preventDefault(); onEnd(); }, { passive: false });
-  document.addEventListener('touchcancel', onEnd);
+  canvas.addEventListener('touchend', e => { e.preventDefault(); onEnd(); }, { passive: false });
+  canvas.addEventListener('touchcancel', onEnd);
 
   voltar.addEventListener('click', e => { e.preventDefault(); triggerExit('../'); });
 </script>
