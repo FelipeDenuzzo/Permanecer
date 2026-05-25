@@ -45,12 +45,15 @@
       opacity: 0;
       transition: opacity 1.2s ease;
       pointer-events: none;
-      white-space: nowrap;
+      white-space: normal;
+      width: 80vw;
+      max-width: 360px;
       z-index: 50;
     }
     #quote .frase {
       font-size: 0.9rem;
       letter-spacing: 0.06em;
+      line-height: 1.5;
       display: block;
       margin-bottom: 0.4rem;
     }
@@ -80,8 +83,8 @@
 <div id="flash"></div>
 <canvas id="c"></canvas>
 <div id="quote">
-  <span class="frase">&#8220;Aquilo a que você resiste, persiste.&#8221;</span>
-  <span class="autor">Carl Jung</span>
+  <span class="frase"></span>
+  <span class="autor"></span>
 </div>
 <a id="voltar" href="../">Permanecer</a>
 <script>
@@ -91,6 +94,15 @@
     '#EBEFFF','#FFDEF0','#E1FFEF'
   ];
   document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
+
+  // frases sorteadas por rodada
+  const frases = [
+    { texto: '\u201cAquilo a que voc\u00ea resiste, persiste.\u201d', autor: 'Carl Jung' },
+    { texto: '\u201cA l\u00edngua revela o conte\u00fado do cora\u00e7\u00e3o.\u201d', autor: 'Emmanuel' },
+  ];
+  const escolha = frases[Math.floor(Math.random() * frases.length)];
+  document.querySelector('#quote .frase').textContent = escolha.texto;
+  document.querySelector('#quote .autor').textContent = escolha.autor;
 
   const flash  = document.getElementById('flash');
   const canvas = document.getElementById('c');
@@ -116,7 +128,6 @@
   let leaving  = false;
   let quoteVisible = false;
 
-  // aparece quando count entra abaixo de 20, some quando chega abaixo de 10
   function updateQuote() {
     const shouldShow = (count <= 20 && count > 10);
     if (shouldShow && !quoteVisible) {
