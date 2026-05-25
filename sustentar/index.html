@@ -73,16 +73,15 @@
   resize();
   window.addEventListener('resize', resize);
 
-  // Raio 50% menor: 0.09 em vez de 0.18
   const R = () => Math.min(canvas.width, canvas.height) * 0.09;
 
   let phase = 'intro';
   let introProgress = 0;
-  const introDuration = 5000; // intro mais lenta
+  const introDuration = 5000;
 
   let lineX = 0;
   let lineXTarget = 0;
-  const lineSpeed = 700; // resposta mais lenta
+  const lineSpeed = 700;
 
   let circleAngle = 0;
   let circleAngleVel = 0;
@@ -111,16 +110,22 @@
   function lineXMin() { return R(); }
   function lineXMax() { return canvas.width - R(); }
 
-  function lineTopY() {
-    const vr = voltar.getBoundingClientRect();
-    return vr.top - R() * 0.4;
+  // Pivô = topo da linha (onde o círculo pousa)
+  // A linha cresce PARA BAIXO a partir do pivô
+  // O pivô fica no centro vertical da tela
+  function pivotY() {
+    return canvas.height * 0.52;
   }
 
+  function lineHeight() {
+    return R() * 2;
+  }
+
+  // Centro do círculo: pivô + deslocamento angular (círculo fica ACIMA do pivô)
   function circleCenterReal() {
-    const pivot = { x: lineX, y: lineTopY() };
     return {
-      x: pivot.x + Math.sin(circleAngle) * R(),
-      y: pivot.y - Math.cos(circleAngle) * R()
+      x: lineX + Math.sin(circleAngle) * R(),
+      y: pivotY() - Math.cos(circleAngle) * R()
     };
   }
 
@@ -151,10 +156,9 @@
     lineX = Math.max(lineXMin(), Math.min(lineXMax(), lineX));
 
     if (phase === 'active') {
-      // Física muito mais suave
-      const gravity = 0.00012;  // era 0.00035
-      const damping = 0.994;    // era 0.988 (mais amortecido)
-      const restore = 0.00012;  // era 0.00008 (mais tendência ao equilíbrio)
+      const gravity = 0.00012;
+      const damping = 0.994;
+      const restore = 0.00012;
 
       circleAngleVel += tiltDir * gravity * delta;
       circleAngleVel -= restore * circleAngle * delta;
@@ -188,24 +192,28 @@
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const r = R();
-    const lty = lineTopY();
+    const py = pivotY();
+    const lh = lineHeight();
     const cx = canvas.width / 2;
-    const lineHeight = r * 2;
 
     if (phase === 'intro') {
       const e = easeInOut(introProgress);
 
+      // Linha cresce do pivô para baixo
       ctx.save();
       ctx.globalAlpha = e;
       ctx.strokeStyle = 'rgba(30,28,25,0.75)';
       ctx.lineWidth = 2.4;
       ctx.beginPath();
-      ctx.moveTo(cx, lty);
-      ctx.lineTo(cx, lty - lineHeight * e);
+      ctx.moveTo(cx, py);
+      ctx.lineTo(cx, py + lh * e);
       ctx.stroke();
       ctx.restore();
 
-      const circleY = -r + (lty - r + r) * e;
+      // Círculo desce do topo da tela até pousar no pivô
+      const circleTargetY = py - r;
+      const circleStartY = -r * 2;
+      const circleY = circleStartY + (circleTargetY - circleStartY) * e;
       ctx.save();
       ctx.globalAlpha = e;
       ctx.strokeStyle = 'rgba(30,28,25,0.75)';
@@ -216,13 +224,15 @@
       ctx.restore();
 
     } else {
+      // Linha: do pivô para baixo
       ctx.strokeStyle = 'rgba(30,28,25,0.75)';
       ctx.lineWidth = 2.4;
       ctx.beginPath();
-      ctx.moveTo(lineX, lty);
-      ctx.lineTo(lineX, lty - lineHeight);
+      ctx.moveTo(lineX, pivotY());
+      ctx.lineTo(lineX, pivotY() + lh);
       ctx.stroke();
 
+      // Círculo acima do pivô
       const center = circleCenterReal();
       ctx.strokeStyle = 'rgba(30,28,25,0.75)';
       ctx.lineWidth = 1.2;
