@@ -77,7 +77,7 @@
 
   let phase = 'intro';
   let introProgress = 0;
-  const introDuration = 9000; // 9s — lento e delicado
+  const introDuration = 9000;
 
   let lineX = 0;
   let lineXTarget = 0;
@@ -86,6 +86,11 @@
   let circleAngle = 0;
   let circleAngleVel = 0;
   let tiltDir = 1;
+
+  // Tempo desde o início da interação — gravidade cresce com ele
+  let activeTime = 0;
+  const gravityRampDuration = 6000; // ms para atingir gravidade máxima
+  const gravityMax = 0.00012;
 
   let count = 30;
   let started = false;
@@ -110,13 +115,8 @@
   function lineXMin() { return R(); }
   function lineXMax() { return canvas.width - R(); }
 
-  function pivotY() {
-    return canvas.height * 0.52;
-  }
-
-  function lineHeight() {
-    return R() * 2;
-  }
+  function pivotY() { return canvas.height * 0.52; }
+  function lineHeight() { return R() * 2; }
 
   function circleCenterReal() {
     return {
@@ -129,18 +129,12 @@
     if (phase !== 'idle') return;
     phase = 'active';
     started = true;
+    activeTime = 0;
     tiltDir = Math.random() < 0.5 ? 1 : -1;
   }
 
-  // Easing suave: desacelera bastante no final (pouso delicado)
-  function easeOutQuart(t) {
-    return 1 - Math.pow(1 - t, 4);
-  }
-
-  // Linha usa easeInOut simples
-  function easeInOut(t) {
-    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-  }
+  function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
+  function easeInOut(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
 
   function update(delta) {
     if (phase === 'intro') {
@@ -158,7 +152,12 @@
     lineX = Math.max(lineXMin(), Math.min(lineXMax(), lineX));
 
     if (phase === 'active') {
-      const gravity = 0.00012;
+      activeTime += delta;
+
+      // Gravidade cresce suavemente do zero até gravityMax
+      const ramp = Math.min(activeTime / gravityRampDuration, 1);
+      const gravity = gravityMax * ramp * ramp; // quadrático: começa quasi-zero
+
       const damping = 0.994;
       const restore = 0.00012;
 
@@ -199,10 +198,9 @@
     const cx = canvas.width / 2;
 
     if (phase === 'intro') {
-      const eL = easeInOut(introProgress);     // linha
-      const eC = easeOutQuart(introProgress);  // círculo desce devagar e pousa suave
+      const eL = easeInOut(introProgress);
+      const eC = easeOutQuart(introProgress);
 
-      // Linha cresce do pivô para baixo
       ctx.save();
       ctx.globalAlpha = eL;
       ctx.strokeStyle = 'rgba(30,28,25,0.75)';
@@ -213,12 +211,11 @@
       ctx.stroke();
       ctx.restore();
 
-      // Círculo desce lentamente do topo e desacelera ao pousar
       const circleStartY = -r * 2;
       const circleTargetY = py - r;
       const circleY = circleStartY + (circleTargetY - circleStartY) * eC;
       ctx.save();
-      ctx.globalAlpha = Math.min(1, introProgress * 3); // aparece gradualmente
+      ctx.globalAlpha = Math.min(1, introProgress * 3);
       ctx.strokeStyle = 'rgba(30,28,25,0.75)';
       ctx.lineWidth = 1.2;
       ctx.beginPath();
@@ -230,8 +227,8 @@
       ctx.strokeStyle = 'rgba(30,28,25,0.75)';
       ctx.lineWidth = 2.4;
       ctx.beginPath();
-      ctx.moveTo(lineX, pivotY());
-      ctx.lineTo(lineX, pivotY() + lh);
+      ctx.moveTo(lineX, py);
+      ctx.lineTo(lineX, py + lh);
       ctx.stroke();
 
       const center = circleCenterReal();
