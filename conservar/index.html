@@ -64,7 +64,9 @@
   const margin = () => Math.min(canvas.width, canvas.height) * 0.07;
   const rMin   = () => rInner() + margin();
   const rMax   = () => rOuter() - margin();
-  const rMid0  = () => (rMin() + rMax()) / 2;
+
+  // Zona neutra: faixa de 15% ao redor do centro
+  const neutralBand = 0.15;
 
   let t = 0.5;
   const speed = 0.06;
@@ -91,6 +93,12 @@
     navigateTo = href;
     fadeDir = -1;
     fadeStart = null;
+  }
+
+  function calcProx(t) {
+    const distFromMid = Math.abs(t - 0.5);
+    if (distFromMid <= neutralBand) return 0;
+    return Math.min((distFromMid - neutralBand) / (0.5 - neutralBand), 1);
   }
 
   function draw(ts) {
@@ -125,8 +133,9 @@
     const rx = rMax();
     const rm = rn + t * (rx - rn);
 
-    const proxInner = 1 - Math.min((rm - rn) / (rMid0() - rn), 1);
-    const proxOuter = 1 - Math.min((rx - rm) / (rx - rMid0()), 1);
+    const prox = calcProx(t);
+    const proxInner = t < 0.5 ? prox : 0;
+    const proxOuter = t > 0.5 ? prox : 0;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.globalAlpha = fadeAlpha;
@@ -144,11 +153,12 @@
     ctx.stroke();
 
     if (proxInner > 0) {
-      const gradRadius = ro * 0.75;
+      const gradRadius = ro * 0.80;
       const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, gradRadius);
-      grad.addColorStop(0,   `rgba(20,18,15,${0.82 * proxInner})`);
-      grad.addColorStop(0.3, `rgba(20,18,15,${0.55 * proxInner})`);
-      grad.addColorStop(1,   'rgba(20,18,15,0)');
+      grad.addColorStop(0,    `rgba(15,13,10,${0.95 * proxInner})`);
+      grad.addColorStop(0.25, `rgba(15,13,10,${0.75 * proxInner})`);
+      grad.addColorStop(0.6,  `rgba(15,13,10,${0.3  * proxInner})`);
+      grad.addColorStop(1,    'rgba(15,13,10,0)');
       ctx.beginPath();
       ctx.arc(cx, cy, gradRadius, 0, Math.PI * 2);
       ctx.fillStyle = grad;
@@ -157,10 +167,10 @@
 
     if (proxOuter > 0) {
       const diag = Math.sqrt(canvas.width ** 2 + canvas.height ** 2) / 2;
-      const grad = ctx.createRadialGradient(cx, cy, ro * 0.5, cx, cy, diag);
-      grad.addColorStop(0,   'rgba(20,18,15,0)');
-      grad.addColorStop(0.6, `rgba(20,18,15,${0.5 * proxOuter})`);
-      grad.addColorStop(1,   `rgba(20,18,15,${0.92 * proxOuter})`);
+      const grad = ctx.createRadialGradient(cx, cy, ro * 0.4, cx, cy, diag);
+      grad.addColorStop(0,   'rgba(15,13,10,0)');
+      grad.addColorStop(0.5, `rgba(15,13,10,${0.6  * proxOuter})`);
+      grad.addColorStop(1,   `rgba(15,13,10,${0.97 * proxOuter})`);
       ctx.beginPath();
       ctx.rect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = grad;
