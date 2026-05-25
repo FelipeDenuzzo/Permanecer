@@ -73,15 +73,16 @@
   resize();
   window.addEventListener('resize', resize);
 
-  const R = () => Math.min(canvas.width, canvas.height) * 0.18;
+  // Raio 50% menor: 0.09 em vez de 0.18
+  const R = () => Math.min(canvas.width, canvas.height) * 0.09;
 
   let phase = 'intro';
   let introProgress = 0;
-  const introDuration = 2800;
+  const introDuration = 5000; // intro mais lenta
 
   let lineX = 0;
   let lineXTarget = 0;
-  const lineSpeed = 400;
+  const lineSpeed = 700; // resposta mais lenta
 
   let circleAngle = 0;
   let circleAngleVel = 0;
@@ -150,9 +151,10 @@
     lineX = Math.max(lineXMin(), Math.min(lineXMax(), lineX));
 
     if (phase === 'active') {
-      const gravity = 0.00035;
-      const damping = 0.988;
-      const restore = 0.00008;
+      // Física muito mais suave
+      const gravity = 0.00012;  // era 0.00035
+      const damping = 0.994;    // era 0.988 (mais amortecido)
+      const restore = 0.00012;  // era 0.00008 (mais tendência ao equilíbrio)
 
       circleAngleVel += tiltDir * gravity * delta;
       circleAngleVel -= restore * circleAngle * delta;
@@ -193,7 +195,6 @@
     if (phase === 'intro') {
       const e = easeInOut(introProgress);
 
-      // Linha cresce de baixo para cima
       ctx.save();
       ctx.globalAlpha = e;
       ctx.strokeStyle = 'rgba(30,28,25,0.75)';
@@ -204,7 +205,6 @@
       ctx.stroke();
       ctx.restore();
 
-      // Círculo desce do topo
       const circleY = -r + (lty - r + r) * e;
       ctx.save();
       ctx.globalAlpha = e;
@@ -216,7 +216,6 @@
       ctx.restore();
 
     } else {
-      // Linha
       ctx.strokeStyle = 'rgba(30,28,25,0.75)';
       ctx.lineWidth = 2.4;
       ctx.beginPath();
@@ -224,7 +223,6 @@
       ctx.lineTo(lineX, lty - lineHeight);
       ctx.stroke();
 
-      // Círculo
       const center = circleCenterReal();
       ctx.strokeStyle = 'rgba(30,28,25,0.75)';
       ctx.lineWidth = 1.2;
@@ -232,13 +230,12 @@
       ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Contagem
       if (started && count > 0) {
-        const alpha = Math.min(1, (30 - count) / 2) * 0.75;
+        const alpha = Math.min(1, (30 - count) / 3) * 0.75;
         ctx.save();
         ctx.globalAlpha = alpha;
         ctx.fillStyle = 'rgba(30,28,25,1)';
-        ctx.font = `2.2rem "VeteranTypewriter", serif`;
+        ctx.font = `1.4rem "VeteranTypewriter", serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(Math.ceil(count), center.x, center.y);
