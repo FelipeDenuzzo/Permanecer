@@ -68,11 +68,9 @@
   let pressing = false;
   let lastTick = null;
 
-  // Contagem
   let count = 30;
   let started = false;
 
-  // Fade
   const fadeDuration = 4000;
   let fadeAlpha = 0;
   let fadeDir = 1;
@@ -83,6 +81,13 @@
     if (fadeStart === null) fadeStart = ts;
     const p = Math.min((ts - fadeStart) / fadeDuration, 1);
     return fadeDir === 1 ? p : 1 - p;
+  }
+
+  function triggerExit(href) {
+    if (navigateTo) return;
+    navigateTo = href;
+    fadeDir = -1;
+    fadeStart = null;
   }
 
   function draw(ts) {
@@ -104,9 +109,9 @@
       t = Math.min(1, t + speed * delta);
     }
 
-    // Contagem regressiva continua após primeiro clique
     if (started && count > 0) {
       count = Math.max(0, count - delta);
+      if (count <= 0) triggerExit('../');
     }
 
     const cx = canvas.width / 2;
@@ -123,21 +128,18 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.globalAlpha = fadeAlpha;
 
-    // Círculo externo
     ctx.beginPath();
     ctx.arc(cx, cy, ro, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(30,28,25,0.7)';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Círculo interno
     ctx.beginPath();
     ctx.arc(cx, cy, ri, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(30,28,25,0.7)';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Degradê centro (proxInner) — desenhado ANTES do texto
     if (proxInner > 0) {
       const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, ri * 1.5);
       grad.addColorStop(0, `rgba(30,28,25,${0.55 * proxInner})`);
@@ -148,7 +150,6 @@
       ctx.fill();
     }
 
-    // Vinheta borda (proxOuter)
     if (proxOuter > 0) {
       const diag = Math.sqrt(canvas.width ** 2 + canvas.height ** 2) / 2;
       const grad = ctx.createRadialGradient(cx, cy, ro * 0.7, cx, cy, diag);
@@ -160,14 +161,12 @@
       ctx.fill();
     }
 
-    // Círculo intermediário
     ctx.beginPath();
     ctx.arc(cx, cy, rm, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(30,28,25,0.75)';
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    // Número — desenhado por último, acima de tudo
     if (started) {
       ctx.fillStyle = 'rgba(30,28,25,0.75)';
       ctx.font = '300 2.2rem Georgia, serif';
@@ -188,9 +187,7 @@
 
   voltar.addEventListener('click', function(e) {
     e.preventDefault();
-    navigateTo = this.href;
-    fadeDir = -1;
-    fadeStart = null;
+    triggerExit(this.href);
   });
 
   document.addEventListener('mousedown', (e) => {
