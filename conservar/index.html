@@ -128,45 +128,54 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.globalAlpha = fadeAlpha;
 
+    // Círculo externo
     ctx.beginPath();
     ctx.arc(cx, cy, ro, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(30,28,25,0.7)';
     ctx.lineWidth = 1;
     ctx.stroke();
 
+    // Círculo interno
     ctx.beginPath();
     ctx.arc(cx, cy, ri, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(30,28,25,0.7)';
     ctx.lineWidth = 1;
     ctx.stroke();
 
+    // Degradê central: área ampliada até rOuter, escuro forte no centro com borda suave
     if (proxInner > 0) {
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, ri * 1.5);
-      grad.addColorStop(0, `rgba(30,28,25,${0.55 * proxInner})`);
-      grad.addColorStop(1, 'rgba(30,28,25,0)');
+      const gradRadius = ro * 0.75; // área maior para borda suave
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, gradRadius);
+      grad.addColorStop(0,   `rgba(20,18,15,${0.82 * proxInner})`);
+      grad.addColorStop(0.3, `rgba(20,18,15,${0.55 * proxInner})`);
+      grad.addColorStop(1,   'rgba(20,18,15,0)');
       ctx.beginPath();
-      ctx.arc(cx, cy, ri * 1.5, 0, Math.PI * 2);
+      ctx.arc(cx, cy, gradRadius, 0, Math.PI * 2);
       ctx.fillStyle = grad;
       ctx.fill();
     }
 
+    // Vinheta borda: mais intensa
     if (proxOuter > 0) {
       const diag = Math.sqrt(canvas.width ** 2 + canvas.height ** 2) / 2;
-      const grad = ctx.createRadialGradient(cx, cy, ro * 0.7, cx, cy, diag);
+      const grad = ctx.createRadialGradient(cx, cy, ro * 0.5, cx, cy, diag);
       grad.addColorStop(0, 'rgba(20,18,15,0)');
-      grad.addColorStop(1, `rgba(20,18,15,${0.7 * proxOuter})`);
+      grad.addColorStop(0.6, `rgba(20,18,15,${0.5 * proxOuter})`);
+      grad.addColorStop(1,   `rgba(20,18,15,${0.92 * proxOuter})`);
       ctx.beginPath();
       ctx.rect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = grad;
       ctx.fill();
     }
 
+    // Círculo intermediário
     ctx.beginPath();
     ctx.arc(cx, cy, rm, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(30,28,25,0.75)';
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
+    // Número — acima de tudo
     if (started) {
       ctx.fillStyle = 'rgba(30,28,25,0.75)';
       ctx.font = '300 2.2rem Georgia, serif';
