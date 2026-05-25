@@ -74,9 +74,10 @@
   resize();
   window.addEventListener('resize', resize);
 
-  const breathPeriod = 8000;
-  const baseRadius = () => Math.min(canvas.width, canvas.height) * 0.18;
-  const breathAmplitude = () => baseRadius() * 0.10;
+  const breathPeriod    = 8000;
+  const baseRadius      = () => Math.min(canvas.width, canvas.height) * 0.18;
+  // amplitude aumentada: era 0.10, agora 0.22
+  const breathAmplitude = () => baseRadius() * 0.22;
 
   let count = 30;
   let pressing = false;
@@ -147,14 +148,12 @@
     triggerExit(this.href);
   });
 
-  // Mouse
   document.addEventListener('mousedown', (e) => {
     if (!isOnVoltar(e.clientX, e.clientY)) pressing = true;
   });
   document.addEventListener('mouseup', () => pressing = false);
   document.addEventListener('mouseleave', () => pressing = false);
 
-  // Touch
   document.addEventListener('touchstart', (e) => {
     const t = e.touches[0];
     if (isOnVoltar(t.clientX, t.clientY)) {
