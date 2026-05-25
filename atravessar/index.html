@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atravessar</title>
+  <style>
+    @font-face {
+      font-family: 'VeteranTypewriter';
+      src: url('../fonts/veteran typewriter.ttf') format('truetype');
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      background-color: #ffffff;
+    }
+    canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      touch-action: none;
+    }
+    #flash {
+      position: fixed;
+      inset: 0;
+      background: #ffffff;
+      opacity: 1;
+      transition: opacity 4s ease;
+      pointer-events: none;
+      z-index: 100;
+    }
+    #voltar {
+      position: fixed;
+      bottom: 1.8rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'VeteranTypewriter', serif;
+      font-size: 0.85rem;
+      color: rgba(30,28,25,0.5);
+      text-decoration: none;
+      letter-spacing: 0.1em;
+      z-index: 200;
+      padding: 1rem 1.5rem;
+    }
+    #voltar:hover { opacity: 0.3; }
+  </style>
+</head>
+<body>
+<div id="flash"></div>
+<canvas id="c"></canvas>
+<a id="voltar" href="../">Permanecer</a>
+<script>
+  const cores = [
+    '#E6E0CF','#DFDAE6','#D5E6E2',
+    '#E6E2D5','#DBD8E6','#D0DDE6',
+    '#EBEFFF','#FFDEF0','#E1FFEF'
+  ];
+  document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
+
+  const flash  = document.getElementById('flash');
+  const canvas = document.getElementById('c');
+  const ctx    = canvas.getContext('2d');
+  const voltar = document.getElementById('voltar');
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // ── constantes ────────────────────────────────────────────────────────
+  const N_LINES     = 10;
+  const TOTAL_TIME  = 29;   // segundos para subir tudo
+  const COUNT_START = 30;
+  const CLOSE_SPEED = 0.6;  // velocidade de retrocesso
+
+  // raio do círculo
+  function circleR() { return Math.min(canvas.width, canvas.height) * 0.055; }
+
+  // margens verticais
+  function marginTop()    { return canvas.height * 0.08; }
+  function marginBottom() { return canvas.height * 0.10; }
+
+  // y inicial do círculo (centro)
+  function circleStartY() { return canvas.height - marginBottom() - circleR(); }
+
+  // área disponível para as linhas
+  function linesAreaTop()    { return marginTop(); }
+  function linesAreaBottom() { return circleStartY() - circleR() - canvas.height * 0.04; }
+
+  // y de cada linha em repouso (0 = topo, 9 = base)
+  function lineRestY(i) {
+    const top    = linesAreaTop();
+    const bottom = linesAreaBottom();
+    return top + (i / (N_LINES - 1)) * (bottom - top);
+  }
+
+  // metade da largura de cada segmento de linha em repouso
+  function lineHalfW() { return canvas.width * 0.38; }
+
+  // ── estado ────────────────────────────────────────────────────────────
+  let pressed  = false;
+  let progress = 0;          // 0..TOTAL_TIME segundos
+  let count    = COUNT_START;
+  let leaving  = false;
+  let finished = false;
+
+  // Para cada linha: o quanto suas metades estão abertas (0=fechada, 1=totalmente aberta)
+  // aberta = metades nas bordas, na vertical
+  const lineOpen = new Array(N_LINES).fill(0);
+
+  // ── qual linha está sendo atravessada agora ───────────────────────────
+  // o círculo atravessa as linhas de baixo para cima: linha 9 primeiro, linha 0 por último
+  // cada linha ocupa TOTAL_TIME / N_LINES segundos
+  const LINE_TIME = TOTAL_TIME / N_LINES;
+
+  // índice da linha que o círculo está atravessando agora (9=base, 0=topo)
+  // a linha i (de baixo para cima) é atravessada quando progress está entre
+  // (N_LINES-1-i)*LINE_TIME e (N_LINES-i)*LINE_TIME
+  function lineProgress(i) {
+    // i: 0=topo, 9=base; atravessa de 9→0
+    const order = N_LINES - 1 - i; // 0=primeira (linha 9), 9=última (linha 0)
+    const t0 = order * LINE_TIME;
+    const t1 = t0 + LINE_TIME;
+    if (progress <= t0) return 0;
+    if (progress >= t1) return 1;
+    return (progress - t0) / LINE_TIME;
+  }
+
+  // posição Y do círculo interpolada
+  function circleY() {
+    const startY = circleStartY();
+    // destino: acima da linha 0 (topo)
+    const endY = linesAreaTop() - circleR() * 0.5;
+    return startY - (progress / TOTAL_TIME) * (startY - endY);
+  }
+
+  // ── easing suave ──────────────────────────────────────────────────────
+  function ease(t) {
+    return t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
+  }
+
+  // ── saída ─────────────────────────────────────────────────────────────
+  function triggerExit() {
+    if (leaving) return;
+    leaving = true;
+    flash.style.opacity = '1';
+    setTimeout(() => window.location.href = '../', 4000);
+  }
+
+  function isOnVoltar(x, y) {
+    const r = voltar.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  }
+
+  // ── loop ──────────────────────────────────────────────────────────────
+  let lastTick = null;
+  let doneTimer = 0;
+
+  function loop(ts) {
+    if (!lastTick) lastTick = ts;
+    const delta = (ts - lastTick) / 1000;
+    lastTick = ts;
+
+    if (!finished) {
+      if (pressed) {
+        progress = Math.min(TOTAL_TIME, progress + delta);
+        count    = Math.max(0, count - delta);
+        if (count <= 0 || progress >= TOTAL_TIME) {
+          finished = true;
+          doneTimer = 0;
+        }
+      } else {
+        progress = Math.max(0, progress - delta * CLOSE_SPEED);
+        count    = Math.min(COUNT_START, count + delta * CLOSE_SPEED);
+      }
+    } else {
+      // espera 1s e sai
+      doneTimer += delta;
+      if (doneTimer >= 1) triggerExit();
+    }
+
+    // atualiza abertura de cada linha
+    for (let i = 0; i < N_LINES; i++) {
+      lineOpen[i] = lineProgress(i);
+    }
+
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // ── desenho ───────────────────────────────────────────────────────────
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const cx   = canvas.width / 2;
+    const cy   = circleY();
+    const r    = circleR();
+    const hw   = lineHalfW();
+    const gap  = r * 1.2; // espaço de abertura ao centro
+
+    ctx.strokeStyle = 'rgba(30,28,25,0.75)';
+    ctx.lineWidth   = 1.2;
+    ctx.lineCap     = 'round';
+
+    for (let i = 0; i < N_LINES; i++) {
+      const open  = ease(lineOpen[i]);
+      const restY = lineRestY(i);
+
+      // metade esquerda
+      // fechada: horizontal de (cx - hw) a cx
+      // aberta:  vertical na borda esquerda
+      // interpolamos: x fixo na borda esq, y vai de restY até centro vertical
+      const leftX1_closed  = cx - hw;
+      const leftX2_closed  = cx;
+      const leftX1_open    = canvas.width * 0.04;
+      const leftX2_open    = canvas.width * 0.04;
+      const leftY1_open    = restY - hw * 0.5;
+      const leftY2_open    = restY + hw * 0.5;
+
+      // posição intermediária
+      // x: desliza da posição original para a borda
+      const lx1 = lerp(leftX1_closed, leftX1_open,  open);
+      const ly1 = lerp(restY,          leftY1_open,  open);
+      const lx2 = lerp(leftX2_closed, leftX2_open,  open);
+      const ly2 = lerp(restY,          leftY2_open,  open);
+
+      ctx.beginPath();
+      ctx.moveTo(lx1, ly1);
+      ctx.lineTo(lx2, ly2);
+      ctx.stroke();
+
+      // metade direita
+      const rightX1_closed = cx;
+      const rightX2_closed = cx + hw;
+      const rightX1_open   = canvas.width * 0.96;
+      const rightX2_open   = canvas.width * 0.96;
+      const rightY1_open   = restY - hw * 0.5;
+      const rightY2_open   = restY + hw * 0.5;
+
+      const rx1 = lerp(rightX1_closed, rightX1_open,  open);
+      const ry1 = lerp(restY,           rightY1_open,  open);
+      const rx2 = lerp(rightX2_closed, rightX2_open,  open);
+      const ry2 = lerp(restY,           rightY2_open,  open);
+
+      ctx.beginPath();
+      ctx.moveTo(rx1, ry1);
+      ctx.lineTo(rx2, ry2);
+      ctx.stroke();
+    }
+
+    // círculo
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // contagem
+    if (count < COUNT_START) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(30,28,25,0.75)';
+      ctx.font = `1.4rem "VeteranTypewriter", serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(Math.ceil(count), cx, cy);
+      ctx.restore();
+    }
+  }
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  // ── eventos ───────────────────────────────────────────────────────────
+  function onStart(x, y) {
+    if (leaving || finished) return;
+    if (isOnVoltar(x, y)) { triggerExit(); return; }
+    pressed = true;
+  }
+  function onEnd() { pressed = false; }
+
+  canvas.addEventListener('mousedown',    e => onStart(e.clientX, e.clientY));
+  document.addEventListener('mouseup',    onEnd);
+  document.addEventListener('mouseleave', onEnd);
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    onStart(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+  canvas.addEventListener('touchend',    e => { e.preventDefault(); onEnd(); }, { passive: false });
+  canvas.addEventListener('touchcancel', onEnd);
+
+  voltar.addEventListener('click', e => { e.preventDefault(); triggerExit(); });
+
+  document.fonts.ready.then(() => {
+    requestAnimationFrame(loop);
+    requestAnimationFrame(() => flash.style.opacity = '0');
+  });
+</script>
+</body>
+</html>
