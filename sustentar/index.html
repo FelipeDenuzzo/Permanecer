@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sustentar</title>
+  <style>
+    @font-face {
+      font-family: 'VeteranTypewriter';
+      src: url('../fonts/veteran typewriter.ttf') format('truetype');
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      background-color: #ffffff;
+    }
+    canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      touch-action: none;
+      pointer-events: none;
+    }
+    #flash {
+      position: fixed;
+      inset: 0;
+      background: #ffffff;
+      opacity: 1;
+      transition: opacity 4s ease;
+      pointer-events: none;
+      z-index: 100;
+    }
+    #voltar {
+      position: fixed;
+      bottom: 1.8rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'VeteranTypewriter', serif;
+      font-size: 0.85rem;
+      color: rgba(30,28,25,0.5);
+      text-decoration: none;
+      letter-spacing: 0.1em;
+      z-index: 200;
+      padding: 1rem 1.5rem;
+    }
+    #voltar:hover { opacity: 0.3; }
+  </style>
+</head>
+<body>
+<div id="flash"></div>
+<canvas id="c"></canvas>
+<a id="voltar" href="../">Permanecer</a>
+<script>
+  const cores = [
+    '#E6E0CF','#DFDAE6','#D5E6E2',
+    '#E6E2D5','#DBD8E6','#D0DDE6',
+    '#EBEFFF','#FFDEF0','#E1FFEF'
+  ];
+  document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
+
+  const flash = document.getElementById('flash');
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const voltar = document.getElementById('voltar');
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const R = () => Math.min(canvas.width, canvas.height) * 0.18;
+
+  let phase = 'intro';
+  let introProgress = 0;
+  const introDuration = 2800;
+
+  let lineX = 0;
+  let lineXTarget = 0;
+  const lineSpeed = 400;
+
+  let circleAngle = 0;
+  let circleAngleVel = 0;
+  let tiltDir = 1;
+
+  let count = 30;
+  let started = false;
+  let leaving = false;
+
+  let dragging = false;
+  let dragStartX = 0;
+  let dragStartLineX = 0;
+
+  function triggerExit(href) {
+    if (leaving) return;
+    leaving = true;
+    flash.style.opacity = '1';
+    setTimeout(() => window.location.href = href, 4000);
+  }
+
+  function isOnVoltar(x, y) {
+    const r = voltar.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  }
+
+  function lineXMin() { return R(); }
+  function lineXMax() { return canvas.width - R(); }
+
+  function lineTopY() {
+    const vr = voltar.getBoundingClientRect();
+    return vr.top - R() * 0.4;
+  }
+
+  function circleCenterReal() {
+    const pivot = { x: lineX, y: lineTopY() };
+    return {
+      x: pivot.x + Math.sin(circleAngle) * R(),
+      y: pivot.y - Math.cos(circleAngle) * R()
+    };
+  }
+
+  function startInteraction() {
+    if (phase !== 'idle') return;
+    phase = 'active';
+    started = true;
+    tiltDir = Math.random() < 0.5 ? 1 : -1;
+  }
+
+  function easeInOut(t) {
+    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+  }
+
+  function update(delta) {
+    if (phase === 'intro') {
+      introProgress = Math.min(introProgress + delta / introDuration, 1);
+      if (introProgress >= 1) {
+        phase = 'idle';
+        lineX = canvas.width / 2;
+        lineXTarget = lineX;
+      }
+      return;
+    }
+
+    const lerpFactor = 1 - Math.pow(0.01, delta / lineSpeed);
+    lineX += (lineXTarget - lineX) * lerpFactor;
+    lineX = Math.max(lineXMin(), Math.min(lineXMax(), lineX));
+
+    if (phase === 'active') {
+      const gravity = 0.00035;
+      const damping = 0.988;
+      const restore = 0.00008;
+
+      circleAngleVel += tiltDir * gravity * delta;
+      circleAngleVel -= restore * circleAngle * delta;
+      circleAngleVel *= Math.pow(damping, delta / 16);
+      circleAngle += circleAngleVel * delta / 16;
+
+      const center = circleCenterReal();
+      const r = R();
+
+      if (center.x - r <= 0) {
+        const maxA = Math.asin(Math.min(1, lineX / r));
+        circleAngle = Math.max(circleAngle, -maxA);
+        if (circleAngleVel < 0) circleAngleVel = 0;
+      }
+      if (center.x + r >= canvas.width) {
+        const maxA = Math.asin(Math.min(1, (canvas.width - lineX) / r));
+        circleAngle = Math.min(circleAngle, maxA);
+        if (circleAngleVel > 0) circleAngleVel = 0;
+      }
+
+      const maxAngle = Math.PI / 2 * 0.93;
+      circleAngle = Math.max(-maxAngle, Math.min(maxAngle, circleAngle));
+
+      if (count > 0) {
+        count = Math.max(0, count - delta / 1000);
+        if (count <= 0) triggerExit('../');
+      }
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const r = R();
+    const lty = lineTopY();
+    const cx = canvas.width / 2;
+    const lineHeight = r * 2;
+
+    if (phase === 'intro') {
+      const e = easeInOut(introProgress);
+
+      // Linha cresce de baixo para cima
+      ctx.save();
+      ctx.globalAlpha = e;
+      ctx.strokeStyle = 'rgba(30,28,25,0.75)';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(cx, lty);
+      ctx.lineTo(cx, lty - lineHeight * e);
+      ctx.stroke();
+      ctx.restore();
+
+      // Círculo desce do topo
+      const circleY = -r + (lty - r + r) * e;
+      ctx.save();
+      ctx.globalAlpha = e;
+      ctx.strokeStyle = 'rgba(30,28,25,0.75)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(cx, circleY, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+    } else {
+      // Linha
+      ctx.strokeStyle = 'rgba(30,28,25,0.75)';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(lineX, lty);
+      ctx.lineTo(lineX, lty - lineHeight);
+      ctx.stroke();
+
+      // Círculo
+      const center = circleCenterReal();
+      ctx.strokeStyle = 'rgba(30,28,25,0.75)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Contagem
+      if (started && count > 0) {
+        const alpha = Math.min(1, (30 - count) / 2) * 0.75;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = 'rgba(30,28,25,1)';
+        ctx.font = `2.2rem "VeteranTypewriter", serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(Math.ceil(count), center.x, center.y);
+        ctx.restore();
+      }
+    }
+  }
+
+  let lastTick = null;
+  function loop(ts) {
+    if (!lastTick) lastTick = ts;
+    const delta = ts - lastTick;
+    lastTick = ts;
+    update(delta);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  document.fonts.ready.then(() => {
+    requestAnimationFrame(loop);
+    requestAnimationFrame(() => flash.style.opacity = '0');
+  });
+
+  function onStart(x, y) {
+    if (isOnVoltar(x, y)) { triggerExit('../'); return; }
+    startInteraction();
+    dragging = true;
+    dragStartX = x;
+    dragStartLineX = lineX;
+  }
+
+  function onMove(x) {
+    if (!dragging) return;
+    const dx = x - dragStartX;
+    lineXTarget = Math.max(lineXMin(), Math.min(lineXMax(), dragStartLineX + dx));
+  }
+
+  function onEnd() { dragging = false; }
+
+  document.addEventListener('mousedown', e => onStart(e.clientX, e.clientY));
+  document.addEventListener('mousemove', e => { if (dragging) onMove(e.clientX); });
+  document.addEventListener('mouseup', onEnd);
+  document.addEventListener('mouseleave', onEnd);
+
+  document.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    if (!isOnVoltar(t.clientX, t.clientY)) e.preventDefault();
+    onStart(t.clientX, t.clientY);
+  }, { passive: false });
+  document.addEventListener('touchmove', e => {
+    e.preventDefault();
+    onMove(e.touches[0].clientX);
+  }, { passive: false });
+  document.addEventListener('touchend', e => { e.preventDefault(); onEnd(); }, { passive: false });
+  document.addEventListener('touchcancel', onEnd);
+
+  voltar.addEventListener('click', e => { e.preventDefault(); triggerExit('../'); });
+</script>
+</body>
+</html>
