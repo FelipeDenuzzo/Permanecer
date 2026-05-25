@@ -33,6 +33,32 @@
       pointer-events: none;
       z-index: 100;
     }
+    #quote {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      font-family: 'VeteranTypewriter', serif;
+      color: rgba(30,28,25,0.75);
+      opacity: 0;
+      transition: opacity 1.2s ease;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 50;
+    }
+    #quote .frase {
+      font-size: 0.9rem;
+      letter-spacing: 0.06em;
+      display: block;
+      margin-bottom: 0.4rem;
+    }
+    #quote .autor {
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      opacity: 0.6;
+      display: block;
+    }
     #voltar {
       position: fixed;
       bottom: 1.8rem;
@@ -52,6 +78,10 @@
 <body>
 <div id="flash"></div>
 <canvas id="c"></canvas>
+<div id="quote">
+  <span class="frase">&#8220;A memória é o tesouro e guardião de todas as coisas.&#8221;</span>
+  <span class="autor">Cícero</span>
+</div>
 <a id="voltar" href="../">Permanecer</a>
 <script>
   const cores = [
@@ -61,10 +91,11 @@
   ];
   document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
 
-  const flash = document.getElementById('flash');
+  const flash  = document.getElementById('flash');
   const canvas = document.getElementById('c');
-  const ctx = canvas.getContext('2d');
+  const ctx    = canvas.getContext('2d');
   const voltar = document.getElementById('voltar');
+  const quote  = document.getElementById('quote');
 
   function resize() {
     canvas.width = window.innerWidth;
@@ -85,9 +116,21 @@
   const speedRetract = 0.18;
   let pressing = false;
   let lastTick = null;
-  let count = 30;
+  let count   = 30;
   let started = false;
   let leaving = false;
+  let quoteVisible = false;
+
+  function updateQuote() {
+    const shouldShow = (count <= 20 && count > 10);
+    if (shouldShow && !quoteVisible) {
+      quote.style.opacity = '1';
+      quoteVisible = true;
+    } else if (!shouldShow && quoteVisible) {
+      quote.style.opacity = '0';
+      quoteVisible = false;
+    }
+  }
 
   function triggerExit(href) {
     if (leaving) return;
@@ -144,7 +187,9 @@
       if (count <= 0) triggerExit('../');
     }
 
-    const cx = canvas.width / 2;
+    updateQuote();
+
+    const cx = canvas.width  / 2;
     const cy = canvas.height / 2;
     const ro = rOuter();
     const ri = rInner();
@@ -217,7 +262,7 @@
   document.addEventListener('mousedown', (e) => {
     if (!isOnVoltar(e.clientX, e.clientY)) { pressing = true; startIfNeeded(); }
   });
-  document.addEventListener('mouseup', () => pressing = false);
+  document.addEventListener('mouseup',    () => pressing = false);
   document.addEventListener('mouseleave', () => pressing = false);
   document.addEventListener('touchstart', (e) => {
     const touch = e.touches[0];
@@ -229,7 +274,7 @@
       startIfNeeded();
     }
   }, { passive: false });
-  document.addEventListener('touchend', (e) => { e.preventDefault(); pressing = false; }, { passive: false });
+  document.addEventListener('touchend',   (e) => { e.preventDefault(); pressing = false; }, { passive: false });
   document.addEventListener('touchcancel', () => pressing = false);
 </script>
 </body>
