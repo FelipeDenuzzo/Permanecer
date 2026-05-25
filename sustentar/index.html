@@ -77,7 +77,7 @@
 
   let phase = 'intro';
   let introProgress = 0;
-  const introDuration = 5000;
+  const introDuration = 9000; // 9s — lento e delicado
 
   let lineX = 0;
   let lineXTarget = 0;
@@ -110,9 +110,6 @@
   function lineXMin() { return R(); }
   function lineXMax() { return canvas.width - R(); }
 
-  // Pivô = topo da linha (onde o círculo pousa)
-  // A linha cresce PARA BAIXO a partir do pivô
-  // O pivô fica no centro vertical da tela
   function pivotY() {
     return canvas.height * 0.52;
   }
@@ -121,7 +118,6 @@
     return R() * 2;
   }
 
-  // Centro do círculo: pivô + deslocamento angular (círculo fica ACIMA do pivô)
   function circleCenterReal() {
     return {
       x: lineX + Math.sin(circleAngle) * R(),
@@ -136,6 +132,12 @@
     tiltDir = Math.random() < 0.5 ? 1 : -1;
   }
 
+  // Easing suave: desacelera bastante no final (pouso delicado)
+  function easeOutQuart(t) {
+    return 1 - Math.pow(1 - t, 4);
+  }
+
+  // Linha usa easeInOut simples
   function easeInOut(t) {
     return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
   }
@@ -197,25 +199,26 @@
     const cx = canvas.width / 2;
 
     if (phase === 'intro') {
-      const e = easeInOut(introProgress);
+      const eL = easeInOut(introProgress);     // linha
+      const eC = easeOutQuart(introProgress);  // círculo desce devagar e pousa suave
 
       // Linha cresce do pivô para baixo
       ctx.save();
-      ctx.globalAlpha = e;
+      ctx.globalAlpha = eL;
       ctx.strokeStyle = 'rgba(30,28,25,0.75)';
       ctx.lineWidth = 2.4;
       ctx.beginPath();
       ctx.moveTo(cx, py);
-      ctx.lineTo(cx, py + lh * e);
+      ctx.lineTo(cx, py + lh * eL);
       ctx.stroke();
       ctx.restore();
 
-      // Círculo desce do topo da tela até pousar no pivô
-      const circleTargetY = py - r;
+      // Círculo desce lentamente do topo e desacelera ao pousar
       const circleStartY = -r * 2;
-      const circleY = circleStartY + (circleTargetY - circleStartY) * e;
+      const circleTargetY = py - r;
+      const circleY = circleStartY + (circleTargetY - circleStartY) * eC;
       ctx.save();
-      ctx.globalAlpha = e;
+      ctx.globalAlpha = Math.min(1, introProgress * 3); // aparece gradualmente
       ctx.strokeStyle = 'rgba(30,28,25,0.75)';
       ctx.lineWidth = 1.2;
       ctx.beginPath();
@@ -224,7 +227,6 @@
       ctx.restore();
 
     } else {
-      // Linha: do pivô para baixo
       ctx.strokeStyle = 'rgba(30,28,25,0.75)';
       ctx.lineWidth = 2.4;
       ctx.beginPath();
@@ -232,7 +234,6 @@
       ctx.lineTo(lineX, pivotY() + lh);
       ctx.stroke();
 
-      // Círculo acima do pivô
       const center = circleCenterReal();
       ctx.strokeStyle = 'rgba(30,28,25,0.75)';
       ctx.lineWidth = 1.2;
