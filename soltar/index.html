@@ -32,6 +32,35 @@
       pointer-events: none;
       z-index: 100;
     }
+    #quote {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      font-family: 'VeteranTypewriter', serif;
+      color: rgba(30,28,25,0.75);
+      opacity: 0;
+      transition: opacity 1.2s ease;
+      pointer-events: none;
+      white-space: normal;
+      width: 80vw;
+      max-width: 360px;
+      z-index: 50;
+    }
+    #quote .frase {
+      font-size: 0.9rem;
+      letter-spacing: 0.06em;
+      line-height: 1.5;
+      display: block;
+      margin-bottom: 0.4rem;
+    }
+    #quote .autor {
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      opacity: 0.6;
+      display: block;
+    }
     #voltar {
       position: fixed;
       bottom: 1.8rem;
@@ -51,6 +80,10 @@
 <body>
 <div id="flash"></div>
 <canvas id="c"></canvas>
+<div id="quote">
+  <span class="frase"></span>
+  <span class="autor"></span>
+</div>
 <a id="voltar" href="../">Permanecer</a>
 <script>
   const cores = [
@@ -60,10 +93,29 @@
   ];
   document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
 
-  const flash = document.getElementById('flash');
+  const frases = [
+    {
+      html: '\u201cN\u00e3o podemos nos curar daquilo<br>que n\u00e3o aceitamos<br>como parte de n\u00f3s mesmos.\u201d',
+      autor: 'Sigmund Freud'
+    },
+    {
+      html: '\u201cA l\u00edngua revela<br>o conte\u00fado do cora\u00e7\u00e3o.\u201d',
+      autor: 'Emmanuel'
+    },
+    {
+      html: '\u201cA vida s\u00e3o as incessantes oportunidades<br>que surgem pela frente,<br>jamais os insucessos<br>que ocorreram no passado.\u201d',
+      autor: 'Joanna de \u00c2ngelis'
+    },
+  ];
+  const escolha = frases[Math.floor(Math.random() * frases.length)];
+  document.querySelector('#quote .frase').innerHTML = escolha.html;
+  document.querySelector('#quote .autor').textContent = escolha.autor;
+
+  const flash  = document.getElementById('flash');
   const canvas = document.getElementById('c');
   const ctx    = canvas.getContext('2d');
   const voltar = document.getElementById('voltar');
+  const quote  = document.getElementById('quote');
 
   function resize() {
     canvas.width  = window.innerWidth;
@@ -76,7 +128,7 @@
   const TOTAL_TIME  = 29;
   const COUNT_START = 30;
   const STEP_TIME   = TOTAL_TIME / N;
-  const CLOSE_SPEED = 0.6; // velocidade de fechamento relativa à abertura
+  const CLOSE_SPEED = 0.6;
 
   function outerR() { return Math.min(canvas.width, canvas.height) * 0.38; }
   function innerR() { return outerR() * 0.18; }
@@ -89,6 +141,18 @@
   let openTime = 0;
   let count    = COUNT_START;
   let leaving  = false;
+  let quoteVisible = false;
+
+  function updateQuote() {
+    const shouldShow = (count <= 20 && count > 10);
+    if (shouldShow && !quoteVisible) {
+      quote.style.opacity = '1';
+      quoteVisible = true;
+    } else if (!shouldShow && quoteVisible) {
+      quote.style.opacity = '0';
+      quoteVisible = false;
+    }
+  }
 
   function getArcForRing(ringIdx) {
     const orderIdx = N - 1 - ringIdx;
@@ -133,11 +197,11 @@
       count    = Math.max(0, count - delta);
       if (count <= 0) triggerExit('../');
     } else {
-      // círculos fecham e contagem sobe juntos, mesma velocidade
       openTime = Math.max(0, openTime - delta * CLOSE_SPEED);
       count    = Math.min(COUNT_START, count + delta * CLOSE_SPEED);
     }
 
+    updateQuote();
     draw();
     requestAnimationFrame(loop);
   }
