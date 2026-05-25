@@ -80,6 +80,13 @@
     return fadeDir === 1 ? p : 1 - p;
   }
 
+  function triggerExit(href) {
+    if (navigateTo) return;
+    navigateTo = href;
+    fadeDir = -1;
+    fadeStart = null;
+  }
+
   function getRadius(t) {
     const phase = (t % breathPeriod) / breathPeriod;
     const s = (Math.sin(phase * Math.PI * 2 - Math.PI / 2) + 1) / 2;
@@ -105,6 +112,8 @@
     } else {
       count = Math.min(30, count + delta / 1000);
     }
+
+    if (count <= 0) triggerExit('../');
 
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
@@ -133,9 +142,7 @@
 
   voltar.addEventListener('click', function(e) {
     e.preventDefault();
-    navigateTo = this.href;
-    fadeDir = -1;
-    fadeStart = null;
+    triggerExit(this.href);
   });
 
   const voltarEl = document.getElementById('voltar');
