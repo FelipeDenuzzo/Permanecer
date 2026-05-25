@@ -18,8 +18,18 @@
       overflow: hidden;
       user-select: none;
       -webkit-user-select: none;
+      background-color: #ffffff;
     }
     canvas { display: block; touch-action: none; }
+    #flash {
+      position: fixed;
+      inset: 0;
+      background: #ffffff;
+      opacity: 1;
+      transition: opacity 4s ease;
+      pointer-events: none;
+      z-index: 100;
+    }
     #voltar {
       position: fixed;
       bottom: 1.8rem;
@@ -30,14 +40,13 @@
       color: rgba(30,28,25,0.5);
       text-decoration: none;
       letter-spacing: 0.1em;
-      opacity: 0;
-      transition: opacity 4s ease;
       z-index: 10;
     }
-    #voltar:hover { opacity: 0.3 !important; }
+    #voltar:hover { opacity: 0.3; }
   </style>
 </head>
 <body>
+<div id="flash"></div>
 <canvas id="c"></canvas>
 <a id="voltar" href="../">Permanecer</a>
 <script>
@@ -48,6 +57,7 @@
   ];
   document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
 
+  const flash = document.getElementById('flash');
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
   const voltar = document.getElementById('voltar');
@@ -67,25 +77,8 @@
   let pressing = false;
   let lastTick = null;
   let elapsed = 0;
-
-  const fadeDuration = 4000;
-  let fadeAlpha = 0;
-  let fadeDir = 1;
-  let fadeStart = null;
-  let navigateTo = null;
-
-  function getFade(ts) {
-    if (fadeStart === null) fadeStart = ts;
-    const p = Math.min((ts - fadeStart) / fadeDuration, 1);
-    return fadeDir === 1 ? p : 1 - p;
-  }
-
-  function triggerExit(href) {
-    if (navigateTo) return;
-    navigateTo = href;
-    fadeDir = -1;
-    fadeStart = null;
-  }
+  let leaving = false;
+  let leaveTarget = null;
 
   function getRadius(t) {
     const phase = (t % breathPeriod) / breathPeriod;
@@ -93,19 +86,19 @@
     return baseRadius() - breathAmplitude() / 2 + s * breathAmplitude();
   }
 
+  function triggerExit(href) {
+    if (leaving) return;
+    leaving = true;
+    leaveTarget = href;
+    flash.style.opacity = '1';
+    setTimeout(() => window.location.href = href, 4000);
+  }
+
   function draw(ts) {
     if (!lastTick) lastTick = ts;
     const delta = ts - lastTick;
     lastTick = ts;
     elapsed += delta;
-
-    fadeAlpha = getFade(ts);
-    voltar.style.opacity = fadeAlpha * 0.5;
-
-    if (navigateTo && fadeAlpha <= 0) {
-      window.location.href = navigateTo;
-      return;
-    }
 
     if (pressing) {
       count = Math.max(0, count - delta / 1000);
@@ -120,7 +113,6 @@
     const r = getRadius(elapsed);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.globalAlpha = fadeAlpha;
 
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -134,23 +126,24 @@
     ctx.textBaseline = 'middle';
     ctx.fillText(Math.ceil(count), cx, cy);
 
-    ctx.globalAlpha = 1;
     requestAnimationFrame(draw);
   }
 
-  document.fonts.ready.then(() => requestAnimationFrame(draw));
+  document.fonts.ready.then(() => {
+    requestAnimationFrame(draw);
+    requestAnimationFrame(() => flash.style.opacity = '0');
+  });
 
   voltar.addEventListener('click', function(e) {
     e.preventDefault();
     triggerExit(this.href);
   });
 
-  const voltarEl = document.getElementById('voltar');
-  document.addEventListener('mousedown', (e) => { if (e.target !== voltarEl) pressing = true; });
+  document.addEventListener('mousedown', (e) => { if (e.target !== voltar) pressing = true; });
   document.addEventListener('mouseup', () => pressing = false);
   document.addEventListener('mouseleave', () => pressing = false);
   document.addEventListener('touchstart', (e) => {
-    if (e.target !== voltarEl) { e.preventDefault(); pressing = true; }
+    if (e.target !== voltar) { e.preventDefault(); pressing = true; }
   }, { passive: false });
   document.addEventListener('touchend', (e) => { e.preventDefault(); pressing = false; }, { passive: false });
   document.addEventListener('touchcancel', () => pressing = false);

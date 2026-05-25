@@ -16,10 +16,18 @@
       justify-content: center;
       align-items: center;
       font-family: 'VeteranTypewriter', serif;
-      opacity: 0;
-      transition: opacity 4s ease;
+      background-color: #ffffff;
+      transition: background-color 4s ease;
     }
-    body.visivel { opacity: 1; }
+    #flash {
+      position: fixed;
+      inset: 0;
+      background: #ffffff;
+      opacity: 1;
+      transition: opacity 4s ease;
+      pointer-events: none;
+      z-index: 100;
+    }
     nav { text-align: center; }
     ul { list-style: none; padding: 0; }
     ul li { margin: 1.2rem 0; }
@@ -35,6 +43,7 @@
   </style>
 </head>
 <body>
+<div id="flash"></div>
 <nav>
   <ul>
     <li><a href="reter/">Reter</a></li>
@@ -47,13 +56,22 @@
     '#E6E2D5','#DBD8E6','#D0DDE6',
     '#EBEFFF','#FFDEF0','#E1FFEF'
   ];
-  document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
-  document.fonts.ready.then(() => requestAnimationFrame(() => document.body.classList.add('visivel')));
+  const cor = cores[Math.floor(Math.random() * cores.length)];
+  document.body.style.backgroundColor = cor;
+
+  const flash = document.getElementById('flash');
+
+  // Fade-in: remove o flash branco
+  document.fonts.ready.then(() => {
+    requestAnimationFrame(() => flash.style.opacity = '0');
+  });
+
   document.querySelectorAll('a').forEach(a => {
     a.addEventListener('click', function(e) {
       e.preventDefault();
       const href = this.href;
-      document.body.classList.remove('visivel');
+      flash.style.transition = 'opacity 4s ease';
+      flash.style.opacity = '1';
       setTimeout(() => window.location.href = href, 4000);
     });
   });
