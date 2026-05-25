@@ -5,13 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Permanecer</title>
   <style>
+    @font-face {
+      font-family: 'VeteranTypewriter';
+      src: url('fonts/veteran typewriter.ttf') format('truetype');
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      font-family: Georgia, serif;
+      font-family: 'VeteranTypewriter', serif;
       opacity: 0;
       transition: opacity 4s ease;
     }
@@ -44,7 +48,7 @@
     '#EBEFFF','#FFDEF0','#E1FFEF'
   ];
   document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
-  requestAnimationFrame(() => document.body.classList.add('visivel'));
+  document.fonts.ready.then(() => requestAnimationFrame(() => document.body.classList.add('visivel')));
   document.querySelectorAll('a').forEach(a => {
     a.addEventListener('click', function(e) {
       e.preventDefault();

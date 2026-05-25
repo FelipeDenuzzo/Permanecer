@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Conservar</title>
   <style>
+    @font-face {
+      font-family: 'VeteranTypewriter';
+      src: url('../fonts/veteran typewriter.ttf') format('truetype');
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       display: flex;
@@ -21,9 +25,8 @@
       bottom: 1.8rem;
       left: 50%;
       transform: translateX(-50%);
-      font-family: Georgia, serif;
+      font-family: 'VeteranTypewriter', serif;
       font-size: 0.85rem;
-      font-weight: 300;
       color: rgba(30,28,25,0.5);
       text-decoration: none;
       letter-spacing: 0.1em;
@@ -128,23 +131,20 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.globalAlpha = fadeAlpha;
 
-    // Círculo externo
     ctx.beginPath();
     ctx.arc(cx, cy, ro, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(30,28,25,0.7)';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Círculo interno
     ctx.beginPath();
     ctx.arc(cx, cy, ri, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(30,28,25,0.7)';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Degradê central: área ampliada até rOuter, escuro forte no centro com borda suave
     if (proxInner > 0) {
-      const gradRadius = ro * 0.75; // área maior para borda suave
+      const gradRadius = ro * 0.75;
       const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, gradRadius);
       grad.addColorStop(0,   `rgba(20,18,15,${0.82 * proxInner})`);
       grad.addColorStop(0.3, `rgba(20,18,15,${0.55 * proxInner})`);
@@ -155,11 +155,10 @@
       ctx.fill();
     }
 
-    // Vinheta borda: mais intensa
     if (proxOuter > 0) {
       const diag = Math.sqrt(canvas.width ** 2 + canvas.height ** 2) / 2;
       const grad = ctx.createRadialGradient(cx, cy, ro * 0.5, cx, cy, diag);
-      grad.addColorStop(0, 'rgba(20,18,15,0)');
+      grad.addColorStop(0,   'rgba(20,18,15,0)');
       grad.addColorStop(0.6, `rgba(20,18,15,${0.5 * proxOuter})`);
       grad.addColorStop(1,   `rgba(20,18,15,${0.92 * proxOuter})`);
       ctx.beginPath();
@@ -168,17 +167,15 @@
       ctx.fill();
     }
 
-    // Círculo intermediário
     ctx.beginPath();
     ctx.arc(cx, cy, rm, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(30,28,25,0.75)';
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    // Número — acima de tudo
     if (started) {
       ctx.fillStyle = 'rgba(30,28,25,0.75)';
-      ctx.font = '300 2.2rem Georgia, serif';
+      ctx.font = '2.2rem "VeteranTypewriter", serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(Math.ceil(count), cx, cy);
@@ -188,7 +185,7 @@
     requestAnimationFrame(draw);
   }
 
-  requestAnimationFrame(draw);
+  document.fonts.ready.then(() => requestAnimationFrame(draw));
 
   function startIfNeeded() {
     if (!started) started = true;

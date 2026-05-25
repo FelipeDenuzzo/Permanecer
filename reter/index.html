@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Reter</title>
   <style>
+    @font-face {
+      font-family: 'VeteranTypewriter';
+      src: url('../fonts/veteran typewriter.ttf') format('truetype');
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       display: flex;
@@ -21,9 +25,8 @@
       bottom: 1.8rem;
       left: 50%;
       transform: translateX(-50%);
-      font-family: Georgia, serif;
+      font-family: 'VeteranTypewriter', serif;
       font-size: 0.85rem;
-      font-weight: 300;
       color: rgba(30,28,25,0.5);
       text-decoration: none;
       letter-spacing: 0.1em;
@@ -65,17 +68,16 @@
   let lastTick = null;
   let elapsed = 0;
 
-  // Fade: 0 = invisivel, 1 = visivel
   const fadeDuration = 4000;
   let fadeAlpha = 0;
-  let fadeDir = 1; // 1 = entrando, -1 = saindo
+  let fadeDir = 1;
   let fadeStart = null;
   let navigateTo = null;
 
   function getFade(ts) {
     if (fadeStart === null) fadeStart = ts;
-    const t = Math.min((ts - fadeStart) / fadeDuration, 1);
-    return fadeDir === 1 ? t : 1 - t;
+    const p = Math.min((ts - fadeStart) / fadeDuration, 1);
+    return fadeDir === 1 ? p : 1 - p;
   }
 
   function getRadius(t) {
@@ -109,7 +111,6 @@
     const r = getRadius(elapsed);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     ctx.globalAlpha = fadeAlpha;
 
     ctx.beginPath();
@@ -119,17 +120,16 @@
     ctx.stroke();
 
     ctx.fillStyle = 'rgba(30,28,25,0.75)';
-    ctx.font = '300 2.2rem Georgia, serif';
+    ctx.font = '2.2rem "VeteranTypewriter", serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(Math.ceil(count), cx, cy);
 
     ctx.globalAlpha = 1;
-
     requestAnimationFrame(draw);
   }
 
-  requestAnimationFrame(draw);
+  document.fonts.ready.then(() => requestAnimationFrame(draw));
 
   voltar.addEventListener('click', function(e) {
     e.preventDefault();
@@ -138,11 +138,12 @@
     fadeStart = null;
   });
 
-  document.addEventListener('mousedown', (e) => { if (e.target !== voltar) pressing = true; });
+  const voltarEl = document.getElementById('voltar');
+  document.addEventListener('mousedown', (e) => { if (e.target !== voltarEl) pressing = true; });
   document.addEventListener('mouseup', () => pressing = false);
   document.addEventListener('mouseleave', () => pressing = false);
   document.addEventListener('touchstart', (e) => {
-    if (e.target !== voltar) { e.preventDefault(); pressing = true; }
+    if (e.target !== voltarEl) { e.preventDefault(); pressing = true; }
   }, { passive: false });
   document.addEventListener('touchend', (e) => { e.preventDefault(); pressing = false; }, { passive: false });
   document.addEventListener('touchcancel', () => pressing = false);
