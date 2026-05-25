@@ -44,12 +44,15 @@
       opacity: 0;
       transition: opacity 1.2s ease;
       pointer-events: none;
-      white-space: nowrap;
+      white-space: normal;
+      width: 80vw;
+      max-width: 360px;
       z-index: 50;
     }
     #quote .frase {
       font-size: 0.9rem;
       letter-spacing: 0.06em;
+      line-height: 1.5;
       display: block;
       margin-bottom: 0.4rem;
     }
@@ -79,7 +82,7 @@
 <div id="flash"></div>
 <canvas id="c"></canvas>
 <div id="quote">
-  <span class="frase">&#8220;A memória é o tesouro e guardião de todas as coisas.&#8221;</span>
+  <span class="frase">&#8220;A memória é o tesouro e guardião<br>de todas as coisas.&#8221;</span>
   <span class="autor">Cícero</span>
 </div>
 <a id="voltar" href="../">Permanecer</a>
