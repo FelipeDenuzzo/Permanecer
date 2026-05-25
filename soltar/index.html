@@ -76,6 +76,7 @@
   const TOTAL_TIME  = 29;
   const COUNT_START = 30;
   const STEP_TIME   = TOTAL_TIME / N;
+  const CLOSE_SPEED = 0.6; // velocidade de fechamento relativa à abertura
 
   function outerR() { return Math.min(canvas.width, canvas.height) * 0.38; }
   function innerR() { return outerR() * 0.18; }
@@ -89,20 +90,6 @@
   let count    = COUNT_START;
   let leaving  = false;
 
-  // Todos os círculos abrem pelo mesmo lado:
-  // a metade SUPERIOR some (arco retrocede de cima),
-  // a metade INFERIOR (base) permanece fixa.
-  //
-  // Para que o arco restante seja a metade inferior:
-  //   startAngle = 0  (direita)
-  //   endAngle   = Math.PI (esquerda, passando por baixo)
-  // Ou seja: arc(cx, cy, r, 0, PI) — sentido horário — desenha a metade inferior.
-  //
-  // Estado fechado  → arc completo: startAngle = -PI, arcSpan = 2*PI
-  // Estado aberto   → metade inferior: startAngle = 0,  arcSpan = PI
-  //
-  // Durante a transição interpolamos startAngle e arcSpan.
-
   function getArcForRing(ringIdx) {
     const orderIdx = N - 1 - ringIdx;
     const tStart   = orderIdx * STEP_TIME;
@@ -112,16 +99,12 @@
     if (openTime >= tEnd)       progress = 1;
     else if (openTime > tStart) progress = (openTime - tStart) / STEP_TIME;
 
-    // easing suave
     const e = progress < 0.5
       ? 2 * progress * progress
       : -1 + (4 - 2 * progress) * progress;
 
-    // fechado: arco completo centrado em -PI (começa em cima, vai 2PI)
-    // aberto:  arco de 0 a PI (metade inferior)
-    // Interpolamos: startAngle de -PI/2 para 0, arcSpan de 2PI para PI
-    const startAngle = (-Math.PI / 2) * (1 - e);   // -PI/2 → 0
-    const arcSpan    = Math.PI * 2 - Math.PI * e;   // 2PI   → PI
+    const startAngle = (-Math.PI / 2) * (1 - e);
+    const arcSpan    = Math.PI * 2 - Math.PI * e;
 
     return { startAngle, arcSpan };
   }
@@ -150,7 +133,9 @@
       count    = Math.max(0, count - delta);
       if (count <= 0) triggerExit('../');
     } else {
-      openTime = Math.max(0, openTime - delta * 0.6);
+      // círculos fecham e contagem sobe juntos, mesma velocidade
+      openTime = Math.max(0, openTime - delta * CLOSE_SPEED);
+      count    = Math.min(COUNT_START, count + delta * CLOSE_SPEED);
     }
 
     draw();
