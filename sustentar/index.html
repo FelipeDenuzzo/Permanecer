@@ -32,6 +32,35 @@
       pointer-events: none;
       z-index: 100;
     }
+    #quote {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      font-family: 'VeteranTypewriter', serif;
+      color: rgba(30,28,25,0.75);
+      opacity: 0;
+      transition: opacity 1.2s ease;
+      pointer-events: none;
+      white-space: normal;
+      width: 80vw;
+      max-width: 360px;
+      z-index: 50;
+    }
+    #quote .frase {
+      font-size: 0.9rem;
+      letter-spacing: 0.06em;
+      line-height: 1.5;
+      display: block;
+      margin-bottom: 0.4rem;
+    }
+    #quote .autor {
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      opacity: 0.6;
+      display: block;
+    }
     #voltar {
       position: fixed;
       bottom: 1.8rem;
@@ -51,6 +80,10 @@
 <body>
 <div id="flash"></div>
 <canvas id="c"></canvas>
+<div id="quote">
+  <span class="frase">&#8220;O sofrimento precisa ser superado,<br>e o único meio de superá-lo<br>é suportando-o.&#8221;</span>
+  <span class="autor">Carl Jung</span>
+</div>
 <a id="voltar" href="../">Permanecer</a>
 <script>
   const cores = [
@@ -60,10 +93,11 @@
   ];
   document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
 
-  const flash = document.getElementById('flash');
+  const flash  = document.getElementById('flash');
   const canvas = document.getElementById('c');
-  const ctx = canvas.getContext('2d');
+  const ctx    = canvas.getContext('2d');
   const voltar = document.getElementById('voltar');
+  const quote  = document.getElementById('quote');
 
   function resize() {
     canvas.width = window.innerWidth;
@@ -72,13 +106,9 @@
   resize();
   window.addEventListener('resize', () => { resize(); initPositions(); });
 
-  // ── raios ──────────────────────────────────────────────────────────────
   function rSmall() { return Math.min(canvas.width, canvas.height) * 0.055; }
   function rLarge() { return Math.min(canvas.width, canvas.height) * 0.10; }
 
-  // ── posições base ──────────────────────────────────────────────────────
-  // pequeno: fixo, topo (25% da altura)
-  // grande:  bottom (75% da altura), com física
   let smallX, smallY;
   let largeX, largeY, largeVX, largeVY;
 
@@ -92,26 +122,34 @@
   }
   initPositions();
 
-  // ── estado ─────────────────────────────────────────────────────────────
   let pressed = false;
   let countdownStarted = false;
-  let count = 30;           // segundos
+  let count   = 30;
   let leaving = false;
+  let quoteVisible = false;
 
-  // animação do contorno do círculo pequeno
-  let strokeExtra = 0;      // extra de raio do contorno (0 → max)
-  const strokeExtraMax = 6;
-  const strokeGrowSpeed  = 80;  // px/s
+  let strokeExtra = 0;
+  const strokeExtraMax   = 6;
+  const strokeGrowSpeed  = 80;
   const strokeShrinkSpeed = 60;
 
-  // ── física ─────────────────────────────────────────────────────────────
-  const GRAVITY      = 280;   // px/s²  — puxa o grande para baixo
-  const DAMPING      = 0.018; // amortecimento por frame (multiplicativo)
-  const MAG_STRENGTH = 1800;  // força do ímã (px/s² normalizada * dist)
-  const MAG_CURVE    = 0.6;   // expoente da curva de atração (< 1 = curva suave)
-  const REST_SPRING  = 1.2;   // mola de retorno à posição base (quando solto)
+  const GRAVITY      = 280;
+  const DAMPING      = 0.018;
+  const MAG_STRENGTH = 1800;
+  const MAG_CURVE    = 0.6;
+  const REST_SPRING  = 1.2;
 
-  // ── saída ──────────────────────────────────────────────────────────────
+  function updateQuote() {
+    const shouldShow = countdownStarted && (count <= 20 && count > 10);
+    if (shouldShow && !quoteVisible) {
+      quote.style.opacity = '1';
+      quoteVisible = true;
+    } else if (!shouldShow && quoteVisible) {
+      quote.style.opacity = '0';
+      quoteVisible = false;
+    }
+  }
+
   function triggerExit(href) {
     if (leaving) return;
     leaving = true;
@@ -124,49 +162,40 @@
     return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   }
 
-  // ── hit test no círculo pequeno ────────────────────────────────────────
   function hitSmall(x, y) {
     const dx = x - smallX, dy = y - smallY;
     return Math.sqrt(dx*dx + dy*dy) <= rSmall() + 12;
   }
 
-  // ── loop ───────────────────────────────────────────────────────────────
   let lastTick = null;
 
   function update(delta) {
-    const dt = delta / 1000; // segundos
+    const dt = delta / 1000;
 
-    // animação do contorno
     if (pressed) {
       strokeExtra = Math.min(strokeExtraMax, strokeExtra + strokeGrowSpeed * dt);
     } else {
       strokeExtra = Math.max(0, strokeExtra - strokeShrinkSpeed * dt);
     }
 
-    // física do círculo grande
     const baseX = canvas.width / 2;
     const baseY = canvas.height * 0.75;
 
     if (pressed) {
-      // força magnética em direção ao círculo pequeno
       const dx = smallX - largeX;
       const dy = smallY - largeY;
       const dist = Math.sqrt(dx*dx + dy*dy) || 1;
       const nx = dx / dist;
       const ny = dy / dist;
-      // força cresce com curva suave conforme a distância
       const forceMag = MAG_STRENGTH * Math.pow(dist / (rLarge() * 4), MAG_CURVE);
       largeVX += nx * forceMag * dt;
       largeVY += ny * forceMag * dt;
     } else {
-      // gravidade
       largeVY += GRAVITY * dt;
-      // mola de retorno suave à posição base
       largeVX += (baseX - largeX) * REST_SPRING * dt;
       largeVY += (baseY - largeY) * REST_SPRING * dt;
     }
 
-    // amortecimento
     const damp = 1 - DAMPING * (delta / 16);
     largeVX *= damp;
     largeVY *= damp;
@@ -174,18 +203,18 @@
     largeX += largeVX * dt;
     largeY += largeVY * dt;
 
-    // colisão com bordas
     const rl = rLarge();
-    if (largeX - rl < 0)               { largeX = rl;                   largeVX *= -0.4; }
-    if (largeX + rl > canvas.width)    { largeX = canvas.width - rl;    largeVX *= -0.4; }
-    if (largeY - rl < 0)               { largeY = rl;                   largeVY *= -0.4; }
-    if (largeY + rl > canvas.height)   { largeY = canvas.height - rl;   largeVY *= -0.4; }
+    if (largeX - rl < 0)             { largeX = rl;                largeVX *= -0.4; }
+    if (largeX + rl > canvas.width)  { largeX = canvas.width - rl; largeVX *= -0.4; }
+    if (largeY - rl < 0)             { largeY = rl;                largeVY *= -0.4; }
+    if (largeY + rl > canvas.height) { largeY = canvas.height - rl; largeVY *= -0.4; }
 
-    // contagem regressiva
     if (countdownStarted && pressed && count > 0) {
       count = Math.max(0, count - dt);
       if (count <= 0) triggerExit('../');
     }
+
+    updateQuote();
   }
 
   function draw() {
@@ -194,15 +223,12 @@
     const rs = rSmall();
     const rl = rLarge();
 
-    // ── círculo grande (inferior, com física) ──────────────────────────
     ctx.strokeStyle = 'rgba(30,28,25,0.65)';
     ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.arc(largeX, largeY, rl, 0, Math.PI * 2);
     ctx.stroke();
 
-    // ── círculo pequeno (fixo, topo) ──────────────────────────────────
-    // contorno progressivo quando pressionado
     const strokeR = rs + strokeExtra;
     ctx.strokeStyle = 'rgba(30,28,25,0.75)';
     ctx.lineWidth = pressed ? 1.8 : 1.2;
@@ -210,7 +236,6 @@
     ctx.arc(smallX, smallY, strokeR, 0, Math.PI * 2);
     ctx.stroke();
 
-    // ── contagem regressiva (acima do círculo pequeno) ─────────────────
     if (countdownStarted) {
       ctx.save();
       ctx.fillStyle = 'rgba(30,28,25,0.75)';
@@ -236,7 +261,6 @@
     requestAnimationFrame(() => flash.style.opacity = '0');
   });
 
-  // ── eventos ────────────────────────────────────────────────────────────
   function onStart(x, y) {
     if (leaving) return;
     if (isOnVoltar(x, y)) { triggerExit('../'); return; }
@@ -246,22 +270,18 @@
     }
   }
 
-  function onEnd() {
-    pressed = false;
-  }
+  function onEnd() { pressed = false; }
 
-  // mouse
   canvas.addEventListener('mousedown', e => onStart(e.clientX, e.clientY));
   document.addEventListener('mouseup', onEnd);
   document.addEventListener('mouseleave', onEnd);
 
-  // touch
   canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     const t = e.touches[0];
     onStart(t.clientX, t.clientY);
   }, { passive: false });
-  canvas.addEventListener('touchend', e => { e.preventDefault(); onEnd(); }, { passive: false });
+  canvas.addEventListener('touchend',    e => { e.preventDefault(); onEnd(); }, { passive: false });
   canvas.addEventListener('touchcancel', onEnd);
 
   voltar.addEventListener('click', e => { e.preventDefault(); triggerExit('../'); });
