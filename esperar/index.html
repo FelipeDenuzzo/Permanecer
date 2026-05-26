@@ -34,6 +34,20 @@
       pointer-events: none;
       z-index: 100;
     }
+    #countdown {
+      position: fixed;
+      bottom: 5.2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'VeteranTypewriter', serif;
+      font-size: 1.1rem;
+      letter-spacing: 0.12em;
+      color: rgba(30,28,25,0.55);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+      z-index: 50;
+    }
     #voltar {
       position: fixed;
       bottom: 1.8rem;
@@ -70,6 +84,7 @@
 <div id="flash"></div>
 <button id="mute-btn" title="silenciar">&#9834;</button>
 <canvas id="c"></canvas>
+<div id="countdown"></div>
 <a id="voltar" href="../">Permanecer</a>
 <script>
   const cores = [
@@ -103,91 +118,63 @@
   function fadeOutAudio() {
     const steps = 40, duration = 2000, interval = duration / steps;
     const volStep = audio.volume / steps; let s = 0;
-    const t = setInterval(() => { s++; audio.volume = Math.max(0, audio.volume - volStep); if (s >= steps) clearInterval(t); }, interval);
+    const t = setInterval(() => {
+      s++; audio.volume = Math.max(0, audio.volume - volStep);
+      if (s >= steps) clearInterval(t);
+    }, interval);
   }
 
   // ── CANVAS ──
-  const flash  = document.getElementById('flash');
-  const canvas = document.getElementById('c');
-  const ctx    = canvas.getContext('2d');
-  const voltar = document.getElementById('voltar');
+  const flash     = document.getElementById('flash');
+  const canvas    = document.getElementById('c');
+  const ctx       = canvas.getContext('2d');
+  const voltar    = document.getElementById('voltar');
+  const countEl   = document.getElementById('countdown');
 
   function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
   resize();
   window.addEventListener('resize', resize);
 
-  // ── STATE ──
-  const DURATION   = 30;      // seconds
-  const GAP        = 38;      // px between ring borders
-  const DOT_R      = 3.5;     // first circle radius (point)
-  const FADE_DUR   = 900;     // ms for each ring to appear/disappear
-  const RING_LIFE  = 1800;    // ms a ring stays fully visible before fading
+  // ── CONFIG ──
+  const DURATION  = 30;    // total seconds
+  const DOT_R     = 4;     // dot radius px
+  const GAP       = 22;    // px between ring borders
+  const MAX_RINGS = 8;     // max rings (0=dot, 1..8=halos)
+  const FADE_SPD  = 0.0012; // alpha units per ms (fade in/out speed)
+  const STEP      = DURATION / MAX_RINGS; // seconds per ring level
 
-  let count    = DURATION;    // 30 → 0 when pressing; 0 → 30 when released
+  let count    = DURATION;
   let pressing = false;
   let lastTick = null;
   let leaving  = false;
 
-  // rings[i] = { born: timestamp, radius: number, opacity: 0..1 }
-  let rings    = [];
-  let ringId   = 0;
-
-  // ── RING ENGINE ──
-  // We show rings when count is progressing in either direction.
-  // "level" = how many rings should exist right now (0..N)
-  // computed from count: 0s = 0 rings, 30s = 0 rings, middle = max rings
-  // Actually: rings grow while pressing (count goes 30→0),
-  //           rings shrink while released (count goes 0→30).
-  // Ring at index 0 is always the dot; each subsequent ring is GAP px wider.
-
-  // At any moment, target ring count = floor((DURATION - count) / DURATION * MAX) + 1 (while pressing)
-  //   or: count == DURATION → 0 rings shown (back to idle)
-  // Simpler approach: rings are created when progress % threshold crosses,
-  // and each ring has its own alpha lifecycle.
-
-  // ── Cleaner model ──
-  // We track the current "ring index" (how deep the user is).
-  // Ring 0 = dot, ring 1 = first halo, etc.
-  // Each ring added as count decreases past checkpoints.
-  // Each ring removed (fade out) as count increases back past same checkpoints.
-
-  const MAX_RINGS = 7;  // maximum simultaneous rings visible
-  const STEP = DURATION / MAX_RINGS;  // seconds per ring level
-
-  // Ring slots: an array of MAX_RINGS+1 entries.
-  // Each slot has { alpha: 0..1, target: 0 or 1, born: ts }
+  // slots[i]: { alpha, target }
+  // RULE: only slot[activeLevel] has target=1; all others target=0
+  // This makes the previous ring fade out as the new one fades in
   const slots = Array.from({ length: MAX_RINGS + 1 }, () => ({ alpha: 0, target: 0 }));
 
-  function currentLevel() {
-    // How many rings should be visible given current count
-    // pressing: count goes 30→0, rings grow
-    // not pressing: count goes 0→30, rings shrink
-    const elapsed = DURATION - count;          // 0 = nothing pressed
-    return Math.min(MAX_RINGS, Math.floor(elapsed / STEP));
+  function activeLevel() {
+    if (count >= DURATION) return -1; // nothing
+    return Math.min(MAX_RINGS, Math.floor((DURATION - count) / STEP));
   }
 
   function updateSlots() {
-    const level = pressing ? currentLevel() : Math.min(MAX_RINGS, Math.floor((DURATION - count) / STEP));
+    const lvl = activeLevel();
     for (let i = 0; i <= MAX_RINGS; i++) {
-      slots[i].target = i <= level ? 1 : 0;
+      slots[i].target = (i === lvl) ? 1 : 0;
     }
-    // ring 0 (dot) always visible while count < DURATION
-    slots[0].target = count < DURATION ? 1 : 0;
   }
 
   function tickSlots(delta) {
-    const speed = delta / FADE_DUR;
     for (let i = 0; i <= MAX_RINGS; i++) {
       const s = slots[i];
-      if (s.target > s.alpha) s.alpha = Math.min(1, s.alpha + speed);
-      else if (s.target < s.alpha) s.alpha = Math.max(0, s.alpha - speed);
+      const step = FADE_SPD * delta;
+      if (s.target > s.alpha) s.alpha = Math.min(1, s.alpha + step);
+      else if (s.target < s.alpha) s.alpha = Math.max(0, s.alpha - step);
     }
   }
 
-  function ringRadius(i) {
-    // i=0 → DOT_R; i=1 → DOT_R + GAP; i=2 → DOT_R + 2*GAP …
-    return DOT_R + i * GAP;
-  }
+  function ringRadius(i) { return DOT_R + i * GAP; }
 
   // ── DRAW ──
   function draw(ts) {
@@ -195,48 +182,44 @@
     const delta = ts - lastTick;
     lastTick = ts;
 
-    // advance / rewind count
-    if (pressing) {
-      count = Math.max(0, count - delta / 1000);
-    } else {
-      count = Math.min(DURATION, count + delta / 1000);
-    }
+    if (pressing) count = Math.max(0, count - delta / 1000);
+    else          count = Math.min(DURATION, count + delta / 1000);
+
     if (count <= 0 && !leaving) triggerExit('../');
 
     updateSlots();
     tickSlots(delta);
 
-    const cx = canvas.width  / 2;
-    const cy = canvas.height * 0.38;   // upper third
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // draw rings from outermost inward so dot is on top
+    // draw outermost first so dot stays on top
     for (let i = MAX_RINGS; i >= 0; i--) {
       const s = slots[i];
-      if (s.alpha <= 0) continue;
+      if (s.alpha <= 0.001) continue;
       const r = ringRadius(i);
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       if (i === 0) {
-        // filled dot
         ctx.fillStyle = `rgba(30,28,25,${0.75 * s.alpha})`;
         ctx.fill();
       } else {
-        ctx.strokeStyle = `rgba(30,28,25,${0.75 * s.alpha})`;
+        ctx.strokeStyle = `rgba(30,28,25,${0.72 * s.alpha})`;
         ctx.lineWidth = 1;
         ctx.stroke();
       }
     }
 
-    // countdown number — below the rings area
+    // countdown HTML element (above #voltar)
     const display = Math.ceil(count);
-    const numY = cy + ringRadius(MAX_RINGS) + 52;
-    ctx.fillStyle = `rgba(30,28,25,${count < DURATION ? 0.6 : 0})`;
-    ctx.font = '1.6rem "VeteranTypewriter", serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(display === 0 ? '0' : display, cx, numY);
+    if (count < DURATION) {
+      countEl.textContent = display === 0 ? '0' : String(display);
+      countEl.style.opacity = '1';
+    } else {
+      countEl.style.opacity = '0';
+    }
 
     requestAnimationFrame(draw);
   }
@@ -262,15 +245,12 @@
   });
 
   voltar.addEventListener('click', function(e) { e.preventDefault(); triggerExit(this.href); });
-
-  document.addEventListener('mousedown', (e) => {
-    if (!isOnVoltar(e.clientX, e.clientY)) pressing = true;
-  });
+  document.addEventListener('mousedown', (e) => { if (!isOnVoltar(e.clientX, e.clientY)) pressing = true; });
   document.addEventListener('mouseup',    () => pressing = false);
   document.addEventListener('mouseleave', () => pressing = false);
   document.addEventListener('touchstart', (e) => {
     const t = e.touches[0];
-    if (isOnVoltar(t.clientX, t.clientY)) { triggerExit('../'); }
+    if (isOnVoltar(t.clientX, t.clientY)) triggerExit('../');
     else { e.preventDefault(); pressing = true; }
   }, { passive: false });
   document.addEventListener('touchend',   (e) => { e.preventDefault(); pressing = false; }, { passive: false });
