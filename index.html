@@ -28,6 +28,25 @@
       pointer-events: none;
       z-index: 100;
     }
+    #header {
+      text-align: center;
+      margin-bottom: 2.2rem;
+      opacity: 0;
+      transition: opacity 7s ease;
+    }
+    #header h1 {
+      font-size: 2.5rem;
+      font-weight: 300;
+      letter-spacing: 0.1em;
+      color: rgba(30,28,25,0.80);
+      margin-bottom: 0.45rem;
+    }
+    #header p {
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
+      color: rgba(30,28,25,0.45);
+      font-weight: 300;
+    }
     nav { text-align: center; }
     ul { list-style: none; padding: 0; }
     ul li { margin: 1.2rem 0; }
@@ -61,15 +80,21 @@
 <body>
 <div id="flash"></div>
 <button id="mute-btn" title="silenciar">&#9834;</button>
-<nav>
-  <ul>
-    <li><a href="reter/">Reter</a></li>
-    <li><a href="conservar/">Conservar</a></li>
-    <li><a href="sustentar/">Sustentar</a></li>
-    <li><a href="soltar/">Soltar</a></li>
-    <li><a href="atravessar/">Atravessar</a></li>
-  </ul>
-</nav>
+<div style="text-align:center">
+  <div id="header">
+    <h1>Permanecer</h1>
+    <p>sil&#234;ncio entre presen&#231;a e toque</p>
+  </div>
+  <nav>
+    <ul>
+      <li><a href="reter/">Reter</a></li>
+      <li><a href="conservar/">Conservar</a></li>
+      <li><a href="sustentar/">Sustentar</a></li>
+      <li><a href="soltar/">Soltar</a></li>
+      <li><a href="atravessar/">Atravessar</a></li>
+    </ul>
+  </nav>
+</div>
 <script>
   const cores = [
     '#E6E0CF','#DFDAE6','#D5E6E2',
@@ -79,7 +104,8 @@
   const cor = cores[Math.floor(Math.random() * cores.length)];
   document.body.style.backgroundColor = cor;
 
-  const flash = document.getElementById('flash');
+  const flash  = document.getElementById('flash');
+  const header = document.getElementById('header');
 
   // ── AUDIO ──
   const TRACKS = ['audio/1.AAC','audio/2.AAC','audio/3.AAC','audio/4.AAC','audio/5.AAC'];
@@ -94,21 +120,17 @@
     lastTrack = idx;
     return TRACKS[idx];
   }
-
   function playNext() {
     audio.src = pickTrack();
     audio.volume = muted ? 0 : 1;
     audio.play().catch(() => {});
   }
-
   audio.addEventListener('ended', playNext);
-
   document.addEventListener('click', function startAudio() {
     if (audio.paused) playNext();
     document.removeEventListener('click', startAudio);
   }, { once: true });
 
-  // mute
   const muteBtn = document.getElementById('mute-btn');
   muteBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -118,10 +140,8 @@
     muteBtn.style.opacity = muted ? '0.18' : '';
   });
 
-  function fadeOutAndGo(href) {
-    const steps = 40;
-    const duration = 2000;
-    const interval = duration / steps;
+  function fadeOutAudio() {
+    const steps = 40, duration = 2000, interval = duration / steps;
     const volStep = audio.volume / steps;
     let s = 0;
     const t = setInterval(() => {
@@ -132,16 +152,24 @@
   }
 
   document.fonts.ready.then(() => {
-    requestAnimationFrame(() => flash.style.opacity = '0');
+    // flash sai normal (4s)
+    requestAnimationFrame(() => {
+      flash.style.opacity = '0';
+      // header aparece mais lento (7s), com delay de 1s
+      setTimeout(() => { header.style.opacity = '1'; }, 1000);
+    });
   });
 
   document.querySelectorAll('a').forEach(a => {
     a.addEventListener('click', function(e) {
       e.preventDefault();
       const href = this.href;
+      // header some igual ao flash (4s)
+      header.style.transition = 'opacity 4s ease';
+      header.style.opacity = '0';
       flash.style.transition = 'opacity 4s ease';
       flash.style.opacity = '1';
-      if (!muted) fadeOutAndGo(href);
+      if (!muted) fadeOutAudio();
       setTimeout(() => window.location.href = href, 4000);
     });
   });
