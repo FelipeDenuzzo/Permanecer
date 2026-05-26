@@ -5,10 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Conservar</title>
   <style>
-    @font-face {
-      font-family: 'VeteranTypewriter';
-      src: url('../fonts/veteran typewriter.ttf') format('truetype');
-    }
+    @font-face { font-family: 'VeteranTypewriter'; src: url('../fonts/veteran typewriter.ttf') format('truetype'); }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; user-select: none; -webkit-user-select: none; background-color: #ffffff; }
     canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; pointer-events: none; }
@@ -35,15 +32,14 @@
   const cores = ['#E6E0CF','#DFDAE6','#D5E6E2','#E6E2D5','#DBD8E6','#D0DDE6','#EBEFFF','#FFDEF0','#E1FFEF'];
   document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
 
-  // ── AUDIO ──
   const TRACKS = ['../audio/1.AAC','../audio/2.AAC','../audio/3.AAC','../audio/4.AAC','../audio/5.AAC'];
   let lastTrack = -1; let muted = false;
-  const audio = new Audio(); audio.volume = 1;
+  const audio = new Audio(); audio.volume = 0.5;
   function pickTrack() { let idx; do { idx = Math.floor(Math.random() * TRACKS.length); } while (idx === lastTrack && TRACKS.length > 1); lastTrack = idx; return TRACKS[idx]; }
-  function playNext() { audio.src = pickTrack(); audio.volume = muted ? 0 : 1; audio.play().catch(() => {}); }
+  function playNext() { audio.src = pickTrack(); audio.volume = muted ? 0 : 0.5; audio.play().catch(() => {}); }
   audio.addEventListener('ended', playNext);
   const muteBtn = document.getElementById('mute-btn');
-  muteBtn.addEventListener('click', (e) => { e.stopPropagation(); muted = !muted; audio.volume = muted ? 0 : 1; muteBtn.textContent = muted ? '\u266f' : '\u266a'; muteBtn.style.opacity = muted ? '0.18' : ''; });
+  muteBtn.addEventListener('click', (e) => { e.stopPropagation(); muted = !muted; audio.volume = muted ? 0 : 0.5; muteBtn.textContent = muted ? '\u266f' : '\u266a'; muteBtn.style.opacity = muted ? '0.18' : ''; });
   function fadeOutAudio() { const steps=40,duration=2000,interval=duration/steps; const volStep=audio.volume/steps; let s=0; const t=setInterval(()=>{s++;audio.volume=Math.max(0,audio.volume-volStep);if(s>=steps)clearInterval(t);},interval); }
 
   const flash  = document.getElementById('flash');

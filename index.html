@@ -28,7 +28,6 @@
       pointer-events: none;
       z-index: 100;
     }
-    /* container geral levemente acima do centro */
     #main {
       text-align: center;
       margin-top: -6vh;
@@ -117,7 +116,7 @@
   let lastTrack = -1;
   let muted = false;
   const audio = new Audio();
-  audio.volume = 1;
+  audio.volume = 0.5;
 
   function pickTrack() {
     let idx;
@@ -127,7 +126,7 @@
   }
   function playNext() {
     audio.src = pickTrack();
-    audio.volume = muted ? 0 : 1;
+    audio.volume = muted ? 0 : 0.5;
     audio.play().catch(() => {});
   }
   audio.addEventListener('ended', playNext);
@@ -140,7 +139,7 @@
   muteBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     muted = !muted;
-    audio.volume = muted ? 0 : 1;
+    audio.volume = muted ? 0 : 0.5;
     muteBtn.textContent = muted ? '\u266f' : '\u266a';
     muteBtn.style.opacity = muted ? '0.18' : '';
   });
