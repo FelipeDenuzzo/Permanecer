@@ -92,6 +92,7 @@
       <li><a href="sustentar/">Sustentar</a></li>
       <li><a href="soltar/">Soltar</a></li>
       <li><a href="atravessar/">Atravessar</a></li>
+      <li><a href="esperar/">Esperar</a></li>
     </ul>
   </nav>
 </div>
@@ -107,7 +108,6 @@
   const flash  = document.getElementById('flash');
   const header = document.getElementById('header');
 
-  // ── AUDIO ──
   const TRACKS = ['audio/1.AAC','audio/2.AAC','audio/3.AAC','audio/4.AAC','audio/5.AAC'];
   let lastTrack = -1;
   let muted = false;
@@ -152,10 +152,8 @@
   }
 
   document.fonts.ready.then(() => {
-    // flash sai normal (4s)
     requestAnimationFrame(() => {
       flash.style.opacity = '0';
-      // header aparece mais lento (7s), com delay de 1s
       setTimeout(() => { header.style.opacity = '1'; }, 1000);
     });
   });
@@ -164,7 +162,6 @@
     a.addEventListener('click', function(e) {
       e.preventDefault();
       const href = this.href;
-      // header some igual ao flash (4s)
       header.style.transition = 'opacity 4s ease';
       header.style.opacity = '0';
       flash.style.transition = 'opacity 4s ease';
