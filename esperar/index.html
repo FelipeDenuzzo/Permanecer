@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Esperar</title>
+  <style>
+    @font-face {
+      font-family: 'VeteranTypewriter';
+      src: url('../fonts/veteran typewriter.ttf') format('truetype');
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      background-color: #ffffff;
+    }
+    canvas {
+      display: block;
+      touch-action: none;
+      pointer-events: none;
+    }
+    #flash {
+      position: fixed;
+      inset: 0;
+      background: #ffffff;
+      opacity: 1;
+      transition: opacity 4s ease;
+      pointer-events: none;
+      z-index: 100;
+    }
+    #voltar {
+      position: fixed;
+      bottom: 1.8rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'VeteranTypewriter', serif;
+      font-size: 0.85rem;
+      color: rgba(30,28,25,0.5);
+      text-decoration: none;
+      letter-spacing: 0.1em;
+      z-index: 200;
+      padding: 1rem 1.5rem;
+    }
+    #voltar:hover { opacity: 0.3; }
+    #mute-btn {
+      position: fixed;
+      top: 1.4rem;
+      right: 1.6rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'VeteranTypewriter', serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      color: rgba(30,28,25,0.35);
+      z-index: 200;
+      padding: 0.5rem;
+      transition: opacity 0.3s;
+    }
+    #mute-btn:hover { opacity: 0.15; }
+  </style>
+</head>
+<body>
+<div id="flash"></div>
+<button id="mute-btn" title="silenciar">&#9834;</button>
+<canvas id="c"></canvas>
+<a id="voltar" href="../">Permanecer</a>
+<script>
+  const cores = [
+    '#E6E0CF','#DFDAE6','#D5E6E2',
+    '#E6E2D5','#DBD8E6','#D0DDE6',
+    '#EBEFFF','#FFDEF0','#E1FFEF'
+  ];
+  document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
+
+  // ── AUDIO ──
+  const TRACKS = ['../audio/1.AAC','../audio/2.AAC','../audio/3.AAC','../audio/4.AAC','../audio/5.AAC'];
+  let lastTrack = -1, muted = false;
+  const audio = new Audio();
+  audio.volume = 1;
+  function pickTrack() {
+    let idx;
+    do { idx = Math.floor(Math.random() * TRACKS.length); } while (idx === lastTrack && TRACKS.length > 1);
+    lastTrack = idx;
+    return TRACKS[idx];
+  }
+  function playNext() { audio.src = pickTrack(); audio.volume = muted ? 0 : 1; audio.play().catch(() => {}); }
+  audio.addEventListener('ended', playNext);
+  const muteBtn = document.getElementById('mute-btn');
+  muteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    muted = !muted;
+    audio.volume = muted ? 0 : 1;
+    muteBtn.textContent = muted ? '\u266f' : '\u266a';
+    muteBtn.style.opacity = muted ? '0.18' : '';
+  });
+  function fadeOutAudio() {
+    const steps = 40, duration = 2000, interval = duration / steps;
+    const volStep = audio.volume / steps; let s = 0;
+    const t = setInterval(() => { s++; audio.volume = Math.max(0, audio.volume - volStep); if (s >= steps) clearInterval(t); }, interval);
+  }
+
+  // ── CANVAS ──
+  const flash  = document.getElementById('flash');
+  const canvas = document.getElementById('c');
+  const ctx    = canvas.getContext('2d');
+  const voltar = document.getElementById('voltar');
+
+  function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // ── STATE ──
+  const DURATION   = 30;      // seconds
+  const GAP        = 38;      // px between ring borders
+  const DOT_R      = 3.5;     // first circle radius (point)
+  const FADE_DUR   = 900;     // ms for each ring to appear/disappear
+  const RING_LIFE  = 1800;    // ms a ring stays fully visible before fading
+
+  let count    = DURATION;    // 30 → 0 when pressing; 0 → 30 when released
+  let pressing = false;
+  let lastTick = null;
+  let leaving  = false;
+
+  // rings[i] = { born: timestamp, radius: number, opacity: 0..1 }
+  let rings    = [];
+  let ringId   = 0;
+
+  // ── RING ENGINE ──
+  // We show rings when count is progressing in either direction.
+  // "level" = how many rings should exist right now (0..N)
+  // computed from count: 0s = 0 rings, 30s = 0 rings, middle = max rings
+  // Actually: rings grow while pressing (count goes 30→0),
+  //           rings shrink while released (count goes 0→30).
+  // Ring at index 0 is always the dot; each subsequent ring is GAP px wider.
+
+  // At any moment, target ring count = floor((DURATION - count) / DURATION * MAX) + 1 (while pressing)
+  //   or: count == DURATION → 0 rings shown (back to idle)
+  // Simpler approach: rings are created when progress % threshold crosses,
+  // and each ring has its own alpha lifecycle.
+
+  // ── Cleaner model ──
+  // We track the current "ring index" (how deep the user is).
+  // Ring 0 = dot, ring 1 = first halo, etc.
+  // Each ring added as count decreases past checkpoints.
+  // Each ring removed (fade out) as count increases back past same checkpoints.
+
+  const MAX_RINGS = 7;  // maximum simultaneous rings visible
+  const STEP = DURATION / MAX_RINGS;  // seconds per ring level
+
+  // Ring slots: an array of MAX_RINGS+1 entries.
+  // Each slot has { alpha: 0..1, target: 0 or 1, born: ts }
+  const slots = Array.from({ length: MAX_RINGS + 1 }, () => ({ alpha: 0, target: 0 }));
+
+  function currentLevel() {
+    // How many rings should be visible given current count
+    // pressing: count goes 30→0, rings grow
+    // not pressing: count goes 0→30, rings shrink
+    const elapsed = DURATION - count;          // 0 = nothing pressed
+    return Math.min(MAX_RINGS, Math.floor(elapsed / STEP));
+  }
+
+  function updateSlots() {
+    const level = pressing ? currentLevel() : Math.min(MAX_RINGS, Math.floor((DURATION - count) / STEP));
+    for (let i = 0; i <= MAX_RINGS; i++) {
+      slots[i].target = i <= level ? 1 : 0;
+    }
+    // ring 0 (dot) always visible while count < DURATION
+    slots[0].target = count < DURATION ? 1 : 0;
+  }
+
+  function tickSlots(delta) {
+    const speed = delta / FADE_DUR;
+    for (let i = 0; i <= MAX_RINGS; i++) {
+      const s = slots[i];
+      if (s.target > s.alpha) s.alpha = Math.min(1, s.alpha + speed);
+      else if (s.target < s.alpha) s.alpha = Math.max(0, s.alpha - speed);
+    }
+  }
+
+  function ringRadius(i) {
+    // i=0 → DOT_R; i=1 → DOT_R + GAP; i=2 → DOT_R + 2*GAP …
+    return DOT_R + i * GAP;
+  }
+
+  // ── DRAW ──
+  function draw(ts) {
+    if (!lastTick) lastTick = ts;
+    const delta = ts - lastTick;
+    lastTick = ts;
+
+    // advance / rewind count
+    if (pressing) {
+      count = Math.max(0, count - delta / 1000);
+    } else {
+      count = Math.min(DURATION, count + delta / 1000);
+    }
+    if (count <= 0 && !leaving) triggerExit('../');
+
+    updateSlots();
+    tickSlots(delta);
+
+    const cx = canvas.width  / 2;
+    const cy = canvas.height * 0.38;   // upper third
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // draw rings from outermost inward so dot is on top
+    for (let i = MAX_RINGS; i >= 0; i--) {
+      const s = slots[i];
+      if (s.alpha <= 0) continue;
+      const r = ringRadius(i);
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      if (i === 0) {
+        // filled dot
+        ctx.fillStyle = `rgba(30,28,25,${0.75 * s.alpha})`;
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = `rgba(30,28,25,${0.75 * s.alpha})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+
+    // countdown number — below the rings area
+    const display = Math.ceil(count);
+    const numY = cy + ringRadius(MAX_RINGS) + 52;
+    ctx.fillStyle = `rgba(30,28,25,${count < DURATION ? 0.6 : 0})`;
+    ctx.font = '1.6rem "VeteranTypewriter", serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(display === 0 ? '0' : display, cx, numY);
+
+    requestAnimationFrame(draw);
+  }
+
+  function triggerExit(href) {
+    if (leaving) return;
+    leaving = true;
+    if (!muted) fadeOutAudio();
+    flash.style.transition = 'opacity 4s ease';
+    flash.style.opacity = '1';
+    setTimeout(() => window.location.href = href, 4000);
+  }
+
+  function isOnVoltar(x, y) {
+    const r = voltar.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  }
+
+  document.fonts.ready.then(() => {
+    playNext();
+    requestAnimationFrame(draw);
+    requestAnimationFrame(() => flash.style.opacity = '0');
+  });
+
+  voltar.addEventListener('click', function(e) { e.preventDefault(); triggerExit(this.href); });
+
+  document.addEventListener('mousedown', (e) => {
+    if (!isOnVoltar(e.clientX, e.clientY)) pressing = true;
+  });
+  document.addEventListener('mouseup',    () => pressing = false);
+  document.addEventListener('mouseleave', () => pressing = false);
+  document.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    if (isOnVoltar(t.clientX, t.clientY)) { triggerExit('../'); }
+    else { e.preventDefault(); pressing = true; }
+  }, { passive: false });
+  document.addEventListener('touchend',   (e) => { e.preventDefault(); pressing = false; }, { passive: false });
+  document.addEventListener('touchcancel', () => pressing = false);
+</script>
+</body>
+</html>
