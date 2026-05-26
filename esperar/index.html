@@ -36,7 +36,7 @@
     }
     #countdown {
       position: fixed;
-      bottom: 5.2rem;
+      bottom: 10rem;
       left: 50%;
       transform: translateX(-50%);
       font-family: 'VeteranTypewriter', serif;
@@ -94,7 +94,6 @@
   ];
   document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
 
-  // ── AUDIO ──
   const TRACKS = ['../audio/1.AAC','../audio/2.AAC','../audio/3.AAC','../audio/4.AAC','../audio/5.AAC'];
   let lastTrack = -1, muted = false;
   const audio = new Audio();
@@ -124,7 +123,6 @@
     }, interval);
   }
 
-  // ── CANVAS ──
   const flash     = document.getElementById('flash');
   const canvas    = document.getElementById('c');
   const ctx       = canvas.getContext('2d');
@@ -135,17 +133,13 @@
   resize();
   window.addEventListener('resize', resize);
 
-  // ── CONFIG ──
-  const DURATION  = 30;      // total seconds
-  const DOT_R     = 4;       // dot radius px
-  const GAP       = 18;      // px between ring borders  ← reduzido
+  const DURATION  = 30;
+  const DOT_R     = 4;
+  const GAP       = 18;
   const MAX_RINGS = 8;
   const STEP      = DURATION / MAX_RINGS;
-
-  // fade speed: quanto alpha muda por ms
-  // mais lento = transição mais gradual
-  const FADE_IN_SPD  = 0.00055;   // ~1.8s para ir 0→1
-  const FADE_OUT_SPD = 0.00040;   // ~2.5s para ir 1→0
+  const FADE_IN_SPD  = 0.00055;
+  const FADE_OUT_SPD = 0.00040;
 
   let count    = DURATION;
   let pressing = false;
@@ -169,20 +163,14 @@
   function tickSlots(delta) {
     for (let i = 0; i <= MAX_RINGS; i++) {
       const s = slots[i];
-      if (s.target > s.alpha) {
-        s.alpha = Math.min(1, s.alpha + FADE_IN_SPD * delta);
-      } else if (s.target < s.alpha) {
-        s.alpha = Math.max(0, s.alpha - FADE_OUT_SPD * delta);
-      }
+      if (s.target > s.alpha) s.alpha = Math.min(1, s.alpha + FADE_IN_SPD * delta);
+      else if (s.target < s.alpha) s.alpha = Math.max(0, s.alpha - FADE_OUT_SPD * delta);
     }
   }
 
   function ringRadius(i) { return DOT_R + i * GAP; }
-
-  // posição vertical dos círculos: 28% da tela (mais para cima)
   function circleY() { return canvas.height * 0.28; }
 
-  // ── DRAW ──
   function draw(ts) {
     if (!lastTick) lastTick = ts;
     const delta = ts - lastTick;
@@ -217,7 +205,6 @@
       }
     }
 
-    // número
     const display = Math.ceil(count);
     if (count < DURATION) {
       countEl.textContent = display === 0 ? '0' : String(display);
