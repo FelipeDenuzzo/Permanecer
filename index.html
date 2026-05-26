@@ -28,6 +28,11 @@
       pointer-events: none;
       z-index: 100;
     }
+    /* container geral levemente acima do centro */
+    #main {
+      text-align: center;
+      margin-top: -6vh;
+    }
     #header {
       text-align: center;
       margin-bottom: 2.2rem;
@@ -49,9 +54,9 @@
     }
     nav { text-align: center; }
     ul { list-style: none; padding: 0; }
-    ul li { margin: 1.2rem 0; }
+    ul li { margin: 0.95rem 0; }
     ul li a {
-      font-size: 2rem;
+      font-size: 1.7rem;
       font-weight: 300;
       color: rgba(30,28,25,0.75);
       text-decoration: none;
@@ -80,7 +85,7 @@
 <body>
 <div id="flash"></div>
 <button id="mute-btn" title="silenciar">&#9834;</button>
-<div style="text-align:center">
+<div id="main">
   <div id="header">
     <h1>Permanecer</h1>
     <p>sil&#234;ncio entre presen&#231;a e toque</p>
