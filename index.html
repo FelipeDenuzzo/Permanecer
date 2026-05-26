@@ -116,7 +116,7 @@
   let lastTrack = -1;
   let muted = false;
   const audio = new Audio();
-  audio.volume = 0.5;
+  audio.volume = 0.25;
 
   function pickTrack() {
     let idx;
@@ -126,7 +126,7 @@
   }
   function playNext() {
     audio.src = pickTrack();
-    audio.volume = muted ? 0 : 0.5;
+    audio.volume = muted ? 0 : 0.25;
     audio.play().catch(() => {});
   }
   audio.addEventListener('ended', playNext);
@@ -139,7 +139,7 @@
   muteBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     muted = !muted;
-    audio.volume = muted ? 0 : 0.5;
+    audio.volume = muted ? 0 : 0.25;
     muteBtn.textContent = muted ? '\u266f' : '\u266a';
     muteBtn.style.opacity = muted ? '0.18' : '';
   });
