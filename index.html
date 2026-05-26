@@ -40,10 +40,27 @@
       transition: opacity 0.3s;
     }
     ul li a:hover { opacity: 0.5; }
+    #mute-btn {
+      position: fixed;
+      top: 1.4rem;
+      right: 1.6rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'VeteranTypewriter', serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      color: rgba(30,28,25,0.35);
+      z-index: 200;
+      padding: 0.5rem;
+      transition: opacity 0.3s;
+    }
+    #mute-btn:hover { opacity: 0.15; }
   </style>
 </head>
 <body>
 <div id="flash"></div>
+<button id="mute-btn" title="silenciar">&#9834;</button>
 <nav>
   <ul>
     <li><a href="reter/">Reter</a></li>
@@ -64,6 +81,56 @@
 
   const flash = document.getElementById('flash');
 
+  // ── AUDIO ──
+  const TRACKS = ['audio/1.AAC','audio/2.AAC','audio/3.AAC','audio/4.AAC','audio/5.AAC'];
+  let lastTrack = -1;
+  let muted = false;
+  const audio = new Audio();
+  audio.volume = 1;
+
+  function pickTrack() {
+    let idx;
+    do { idx = Math.floor(Math.random() * TRACKS.length); } while (idx === lastTrack && TRACKS.length > 1);
+    lastTrack = idx;
+    return TRACKS[idx];
+  }
+
+  function playNext() {
+    audio.src = pickTrack();
+    audio.volume = muted ? 0 : 1;
+    audio.play().catch(() => {});
+  }
+
+  audio.addEventListener('ended', playNext);
+
+  document.addEventListener('click', function startAudio() {
+    if (audio.paused) playNext();
+    document.removeEventListener('click', startAudio);
+  }, { once: true });
+
+  // mute
+  const muteBtn = document.getElementById('mute-btn');
+  muteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    muted = !muted;
+    audio.volume = muted ? 0 : 1;
+    muteBtn.textContent = muted ? '\u266f' : '\u266a';
+    muteBtn.style.opacity = muted ? '0.18' : '';
+  });
+
+  function fadeOutAndGo(href) {
+    const steps = 40;
+    const duration = 2000;
+    const interval = duration / steps;
+    const volStep = audio.volume / steps;
+    let s = 0;
+    const t = setInterval(() => {
+      s++;
+      audio.volume = Math.max(0, audio.volume - volStep);
+      if (s >= steps) clearInterval(t);
+    }, interval);
+  }
+
   document.fonts.ready.then(() => {
     requestAnimationFrame(() => flash.style.opacity = '0');
   });
@@ -74,6 +141,7 @@
       const href = this.href;
       flash.style.transition = 'opacity 4s ease';
       flash.style.opacity = '1';
+      if (!muted) fadeOutAndGo(href);
       setTimeout(() => window.location.href = href, 4000);
     });
   });

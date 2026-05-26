@@ -77,10 +77,27 @@
       padding: 1rem 1.5rem;
     }
     #voltar:hover { opacity: 0.3; }
+    #mute-btn {
+      position: fixed;
+      top: 1.4rem;
+      right: 1.6rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'VeteranTypewriter', serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      color: rgba(30,28,25,0.35);
+      z-index: 200;
+      padding: 0.5rem;
+      transition: opacity 0.3s;
+    }
+    #mute-btn:hover { opacity: 0.15; }
   </style>
 </head>
 <body>
 <div id="flash"></div>
+<button id="mute-btn" title="silenciar">&#9834;</button>
 <canvas id="c"></canvas>
 <div id="quote">
   <span class="frase"></span>
@@ -95,7 +112,6 @@
   ];
   document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
 
-  // frases sorteadas por rodada
   const frases = [
     { texto: '\u201cAquilo a que voc\u00ea resiste, persiste.\u201d', autor: 'Carl Jung' },
     { texto: '\u201cA l\u00edngua revela o conte\u00fado do cora\u00e7\u00e3o.\u201d', autor: 'Emmanuel' },
@@ -104,16 +120,41 @@
   document.querySelector('#quote .frase').textContent = escolha.texto;
   document.querySelector('#quote .autor').textContent = escolha.autor;
 
+  // ── AUDIO ──
+  const TRACKS = ['../audio/1.AAC','../audio/2.AAC','../audio/3.AAC','../audio/4.AAC','../audio/5.AAC'];
+  let lastTrack = -1;
+  let muted = false;
+  const audio = new Audio();
+  audio.volume = 1;
+  function pickTrack() {
+    let idx;
+    do { idx = Math.floor(Math.random() * TRACKS.length); } while (idx === lastTrack && TRACKS.length > 1);
+    lastTrack = idx;
+    return TRACKS[idx];
+  }
+  function playNext() { audio.src = pickTrack(); audio.volume = muted ? 0 : 1; audio.play().catch(() => {}); }
+  audio.addEventListener('ended', playNext);
+  const muteBtn = document.getElementById('mute-btn');
+  muteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    muted = !muted;
+    audio.volume = muted ? 0 : 1;
+    muteBtn.textContent = muted ? '\u266f' : '\u266a';
+    muteBtn.style.opacity = muted ? '0.18' : '';
+  });
+  function fadeOutAudio() {
+    const steps = 40; const duration = 2000; const interval = duration / steps;
+    const volStep = audio.volume / steps; let s = 0;
+    const t = setInterval(() => { s++; audio.volume = Math.max(0, audio.volume - volStep); if (s >= steps) clearInterval(t); }, interval);
+  }
+
   const flash  = document.getElementById('flash');
   const canvas = document.getElementById('c');
   const ctx    = canvas.getContext('2d');
   const voltar = document.getElementById('voltar');
   const quote  = document.getElementById('quote');
 
-  function resize() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
+  function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
   resize();
   window.addEventListener('resize', resize);
 
@@ -130,13 +171,8 @@
 
   function updateQuote() {
     const shouldShow = (count <= 20 && count > 10);
-    if (shouldShow && !quoteVisible) {
-      quote.style.opacity = '1';
-      quoteVisible = true;
-    } else if (!shouldShow && quoteVisible) {
-      quote.style.opacity = '0';
-      quoteVisible = false;
-    }
+    if (shouldShow && !quoteVisible) { quote.style.opacity = '1'; quoteVisible = true; }
+    else if (!shouldShow && quoteVisible) { quote.style.opacity = '0'; quoteVisible = false; }
   }
 
   function getRadius(t) {
@@ -148,6 +184,7 @@
   function triggerExit(href) {
     if (leaving) return;
     leaving = true;
+    if (!muted) fadeOutAudio();
     flash.style.opacity = '1';
     setTimeout(() => window.location.href = href, 4000);
   }
@@ -162,62 +199,41 @@
     const delta = ts - lastTick;
     lastTick = ts;
     elapsed += delta;
-
-    if (pressing) {
-      count = Math.max(0, count - delta / 1000);
-    } else {
-      count = Math.min(30, count + delta / 1000);
-    }
-
+    if (pressing) { count = Math.max(0, count - delta / 1000); }
+    else { count = Math.min(30, count + delta / 1000); }
     if (count <= 0) triggerExit('../');
-
     updateQuote();
-
-    const cx = canvas.width  / 2;
+    const cx = canvas.width / 2;
     const cy = canvas.height / 2;
     const r  = getRadius(elapsed);
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(30,28,25,0.75)';
     ctx.lineWidth = 1.2;
     ctx.stroke();
-
     ctx.fillStyle = 'rgba(30,28,25,0.75)';
     ctx.font = '2.2rem "VeteranTypewriter", serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(Math.ceil(count), cx, cy);
-
     requestAnimationFrame(draw);
   }
 
   document.fonts.ready.then(() => {
+    playNext();
     requestAnimationFrame(draw);
     requestAnimationFrame(() => flash.style.opacity = '0');
   });
 
-  voltar.addEventListener('click', function(e) {
-    e.preventDefault();
-    triggerExit(this.href);
-  });
-
-  document.addEventListener('mousedown', (e) => {
-    if (!isOnVoltar(e.clientX, e.clientY)) pressing = true;
-  });
+  voltar.addEventListener('click', function(e) { e.preventDefault(); triggerExit(this.href); });
+  document.addEventListener('mousedown', (e) => { if (!isOnVoltar(e.clientX, e.clientY)) pressing = true; });
   document.addEventListener('mouseup',    () => pressing = false);
   document.addEventListener('mouseleave', () => pressing = false);
-
   document.addEventListener('touchstart', (e) => {
     const t = e.touches[0];
-    if (isOnVoltar(t.clientX, t.clientY)) {
-      triggerExit('../');
-    } else {
-      e.preventDefault();
-      pressing = true;
-    }
+    if (isOnVoltar(t.clientX, t.clientY)) { triggerExit('../'); }
+    else { e.preventDefault(); pressing = true; }
   }, { passive: false });
   document.addEventListener('touchend',   (e) => { e.preventDefault(); pressing = false; }, { passive: false });
   document.addEventListener('touchcancel', () => pressing = false);

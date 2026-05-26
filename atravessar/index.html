@@ -5,312 +5,87 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Atravessar</title>
   <style>
-    @font-face {
-      font-family: 'VeteranTypewriter';
-      src: url('../fonts/veteran typewriter.ttf') format('truetype');
-    }
+    @font-face { font-family: 'VeteranTypewriter'; src: url('../fonts/veteran typewriter.ttf') format('truetype'); }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body {
-      width: 100%; height: 100%;
-      overflow: hidden;
-      user-select: none;
-      -webkit-user-select: none;
-      background-color: #ffffff;
-    }
-    canvas {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      touch-action: none;
-    }
-    #flash {
-      position: fixed;
-      inset: 0;
-      background: #ffffff;
-      opacity: 1;
-      transition: opacity 4s ease;
-      pointer-events: none;
-      z-index: 100;
-    }
-    #quote {
-      position: fixed;
-      bottom: 5rem;
-      left: 50%;
-      transform: translateX(-50%);
-      text-align: center;
-      font-family: 'VeteranTypewriter', serif;
-      color: rgba(30,28,25,0.75);
-      opacity: 0;
-      transition: opacity 1.2s ease;
-      pointer-events: none;
-      white-space: normal;
-      width: 80vw;
-      max-width: 360px;
-      z-index: 50;
-    }
-    #quote .frase {
-      font-size: 0.9rem;
-      letter-spacing: 0.06em;
-      line-height: 1.5;
-      display: block;
-      margin-bottom: 0.4rem;
-    }
-    #quote .autor {
-      font-size: 0.72rem;
-      letter-spacing: 0.1em;
-      opacity: 0.6;
-      display: block;
-    }
-    #voltar {
-      position: fixed;
-      bottom: 1.8rem;
-      left: 50%;
-      transform: translateX(-50%);
-      font-family: 'VeteranTypewriter', serif;
-      font-size: 0.85rem;
-      color: rgba(30,28,25,0.5);
-      text-decoration: none;
-      letter-spacing: 0.1em;
-      z-index: 200;
-      padding: 1rem 1.5rem;
-    }
+    html, body { width: 100%; height: 100%; overflow: hidden; user-select: none; -webkit-user-select: none; background-color: #ffffff; }
+    canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; }
+    #flash { position: fixed; inset: 0; background: #ffffff; opacity: 1; transition: opacity 4s ease; pointer-events: none; z-index: 100; }
+    #quote { position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%); text-align: center; font-family: 'VeteranTypewriter', serif; color: rgba(30,28,25,0.75); opacity: 0; transition: opacity 1.2s ease; pointer-events: none; white-space: normal; width: 80vw; max-width: 360px; z-index: 50; }
+    #quote .frase { font-size: 0.9rem; letter-spacing: 0.06em; line-height: 1.5; display: block; margin-bottom: 0.4rem; }
+    #quote .autor { font-size: 0.72rem; letter-spacing: 0.1em; opacity: 0.6; display: block; }
+    #voltar { position: fixed; bottom: 1.8rem; left: 50%; transform: translateX(-50%); font-family: 'VeteranTypewriter', serif; font-size: 0.85rem; color: rgba(30,28,25,0.5); text-decoration: none; letter-spacing: 0.1em; z-index: 200; padding: 1rem 1.5rem; }
     #voltar:hover { opacity: 0.3; }
+    #mute-btn { position: fixed; top: 1.4rem; right: 1.6rem; background: none; border: none; cursor: pointer; font-family: 'VeteranTypewriter', serif; font-size: 0.72rem; letter-spacing: 0.12em; color: rgba(30,28,25,0.35); z-index: 200; padding: 0.5rem; transition: opacity 0.3s; }
+    #mute-btn:hover { opacity: 0.15; }
   </style>
 </head>
 <body>
 <div id="flash"></div>
+<button id="mute-btn" title="silenciar">&#9834;</button>
 <canvas id="c"></canvas>
-<div id="quote">
-  <span class="frase"></span>
-  <span class="autor"></span>
-</div>
+<div id="quote"><span class="frase"></span><span class="autor"></span></div>
 <a id="voltar" href="../">Permanecer</a>
 <script>
-  const cores = [
-    '#E6E0CF','#DFDAE6','#D5E6E2',
-    '#E6E2D5','#DBD8E6','#D0DDE6',
-    '#EBEFFF','#FFDEF0','#E1FFEF'
-  ];
-  document.body.style.backgroundColor = cores[Math.floor(Math.random() * cores.length)];
+  const cores=['#E6E0CF','#DFDAE6','#D5E6E2','#E6E2D5','#DBD8E6','#D0DDE6','#EBEFFF','#FFDEF0','#E1FFEF'];
+  document.body.style.backgroundColor=cores[Math.floor(Math.random()*cores.length)];
+  const frases=[{html:'\u201cNo meio do caminho tinha uma pedra<br>tinha uma pedra<br>no meio do caminho.\u201d',autor:'Carlos Drummond de Andrade'},{html:'\u201cUm navio no porto est\u00e1 seguro<br>\u2014 mas n\u00e3o \u00e9 para isso<br>que os navios foram feitos.\u201d',autor:'G.T. Shedd'},{html:'\u201cN\u00e3o \u00e9 porque as coisas s\u00e3o dif\u00edceis<br>que n\u00e3o ousamos<br>\u2014 \u00e9 porque n\u00e3o ousamos<br>que as coisas s\u00e3o dif\u00edceis.\u201d',autor:'S\u00eaneca'}];
+  const escolha=frases[Math.floor(Math.random()*frases.length)];
+  document.querySelector('#quote .frase').innerHTML=escolha.html;
+  document.querySelector('#quote .autor').textContent=escolha.autor;
 
-  const frases = [
-    {
-      html: '\u201cNo meio do caminho tinha uma pedra<br>tinha uma pedra<br>no meio do caminho.\u201d',
-      autor: 'Carlos Drummond de Andrade'
-    },
-    {
-      html: '\u201cUm navio no porto est\u00e1 seguro<br>\u2014 mas n\u00e3o \u00e9 para isso<br>que os navios foram feitos.\u201d',
-      autor: 'G.T. Shedd'
-    },
-    {
-      html: '\u201cN\u00e3o \u00e9 porque as coisas s\u00e3o dif\u00edceis<br>que n\u00e3o ousamos<br>\u2014 \u00e9 porque n\u00e3o ousamos<br>que as coisas s\u00e3o dif\u00edceis.\u201d',
-      autor: 'S\u00eaneca'
-    },
-  ];
-  const escolha = frases[Math.floor(Math.random() * frases.length)];
-  document.querySelector('#quote .frase').innerHTML = escolha.html;
-  document.querySelector('#quote .autor').textContent = escolha.autor;
+  // ── AUDIO ──
+  const TRACKS=['../audio/1.AAC','../audio/2.AAC','../audio/3.AAC','../audio/4.AAC','../audio/5.AAC'];
+  let lastTrack=-1,muted=false;
+  const audio=new Audio();audio.volume=1;
+  function pickTrack(){let idx;do{idx=Math.floor(Math.random()*TRACKS.length);}while(idx===lastTrack&&TRACKS.length>1);lastTrack=idx;return TRACKS[idx];}
+  function playNext(){audio.src=pickTrack();audio.volume=muted?0:1;audio.play().catch(()=>{});}
+  audio.addEventListener('ended',playNext);
+  const muteBtn=document.getElementById('mute-btn');
+  muteBtn.addEventListener('click',(e)=>{e.stopPropagation();muted=!muted;audio.volume=muted?0:1;muteBtn.textContent=muted?'\u266f':'\u266a';muteBtn.style.opacity=muted?'0.18':'';});
+  function fadeOutAudio(){const steps=40,duration=2000,interval=duration/steps;const volStep=audio.volume/steps;let s=0;const t=setInterval(()=>{s++;audio.volume=Math.max(0,audio.volume-volStep);if(s>=steps)clearInterval(t);},interval);}
 
-  const flash  = document.getElementById('flash');
-  const canvas = document.getElementById('c');
-  const ctx    = canvas.getContext('2d');
-  const voltar = document.getElementById('voltar');
-  const quote  = document.getElementById('quote');
-
-  function resize() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-  resize();
-  window.addEventListener('resize', resize);
-
-  const N_LINES     = 10;
-  const TOTAL_TIME  = 29;
-  const COUNT_START = 30;
-  const CLOSE_SPEED = 0.6;
-  const LINE_TIME   = TOTAL_TIME / N_LINES;
-
-  function circleR()         { return Math.min(canvas.width, canvas.height) * 0.055; }
-  function marginTop()       { return canvas.height * 0.08; }
-  function marginBottom()    { return canvas.height * 0.10; }
-  function circleStartY()    { return canvas.height - marginBottom() - circleR(); }
-  function linesAreaTop()    { return marginTop(); }
-  function linesAreaBottom() { return circleStartY() - circleR() - canvas.height * 0.04; }
-
-  // comprimento de cada segmento (metade visível)
-  function segLen() { return canvas.width * 0.38; }
-  // gap central em repouso (espaço entre as duas metades)
-  function gapRest() { return circleR() * 0; } // sem gap em repouso: tocam no centro
-
-  function lineRestY(i) {
-    return linesAreaTop() + (i / (N_LINES - 1)) * (linesAreaBottom() - linesAreaTop());
-  }
-
-  let pressed  = false;
-  let progress = 0;
-  let count    = COUNT_START;
-  let leaving  = false;
-  let finished = false;
-  let quoteVisible = false;
-  const lineOpen = new Array(N_LINES).fill(0);
-
-  function lineProgress(i) {
-    const order = N_LINES - 1 - i;
-    const t0 = order * LINE_TIME;
-    const t1 = t0 + LINE_TIME;
-    if (progress <= t0) return 0;
-    if (progress >= t1) return 1;
-    return (progress - t0) / LINE_TIME;
-  }
-
-  function circleY() {
-    const startY = circleStartY();
-    const endY   = linesAreaTop() - circleR() * 0.5;
-    return startY - (progress / TOTAL_TIME) * (startY - endY);
-  }
-
-  function ease(t) {
-    return t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
-  }
-
-  function lerp(a, b, t) { return a + (b - a) * t; }
-
-  function updateQuote() {
-    const shouldShow = (count <= 20 && count > 10);
-    if (shouldShow && !quoteVisible) {
-      quote.style.opacity = '1';
-      quoteVisible = true;
-    } else if (!shouldShow && quoteVisible) {
-      quote.style.opacity = '0';
-      quoteVisible = false;
-    }
-  }
-
-  function triggerExit() {
-    if (leaving) return;
-    leaving = true;
-    flash.style.opacity = '1';
-    setTimeout(() => window.location.href = '../', 4000);
-  }
-
-  function isOnVoltar(x, y) {
-    const r = voltar.getBoundingClientRect();
-    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
-  }
-
-  let lastTick = null;
-  let doneTimer = 0;
-
-  function loop(ts) {
-    if (!lastTick) lastTick = ts;
-    const delta = (ts - lastTick) / 1000;
-    lastTick = ts;
-
-    if (!finished) {
-      if (pressed) {
-        progress = Math.min(TOTAL_TIME, progress + delta);
-        count    = Math.max(0, count - delta);
-        if (count <= 0 || progress >= TOTAL_TIME) {
-          finished = true;
-          doneTimer = 0;
-        }
-      } else {
-        progress = Math.max(0, progress - delta * CLOSE_SPEED);
-        count    = Math.min(COUNT_START, count + delta * CLOSE_SPEED);
-      }
-      updateQuote();
-    } else {
-      doneTimer += delta;
-      if (doneTimer >= 1) triggerExit();
-    }
-
-    for (let i = 0; i < N_LINES; i++) {
-      lineOpen[i] = lineProgress(i);
-    }
-
-    draw();
-    requestAnimationFrame(loop);
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const cx  = canvas.width / 2;
-    const cy  = circleY();
-    const r   = circleR();
-    const sl  = segLen();         // comprimento do segmento
-    const edge = canvas.width * 0.03; // margem da borda
-
-    ctx.strokeStyle = 'rgba(30,28,25,0.75)';
-    ctx.lineWidth   = 1.2;
-    ctx.lineCap     = 'round';
-
-    for (let i = 0; i < N_LINES; i++) {
-      const open  = ease(lineOpen[i]);
-      const restY = lineRestY(i);
-
-      // Segmento ESQUERDO
-      // repouso:  de (cx - sl) até (cx)          — toca o centro
-      // aberto:   de (edge - sl) até (edge)       — encostado na borda esq
-      // desloca toda a linha para a esquerda por `shift`
-      const shift = (cx - edge) * open;  // quanto desloca para esq
-      const lx1 = cx - sl - shift;
-      const lx2 = cx     - shift;
-      ctx.beginPath();
-      ctx.moveTo(lx1, restY);
-      ctx.lineTo(lx2, restY);
-      ctx.stroke();
-
-      // Segmento DIREITO (simétrico)
-      const rx1 = cx     + shift;
-      const rx2 = cx + sl + shift;
-      ctx.beginPath();
-      ctx.moveTo(rx1, restY);
-      ctx.lineTo(rx2, restY);
-      ctx.stroke();
-    }
-
-    // círculo
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // contagem
-    if (count < COUNT_START) {
-      ctx.save();
-      ctx.fillStyle = 'rgba(30,28,25,0.75)';
-      ctx.font = `1.4rem "VeteranTypewriter", serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(Math.ceil(count), cx, cy);
-      ctx.restore();
-    }
-  }
-
-  function onStart(x, y) {
-    if (leaving || finished) return;
-    if (isOnVoltar(x, y)) { triggerExit(); return; }
-    pressed = true;
-  }
-  function onEnd() { pressed = false; }
-
-  canvas.addEventListener('mousedown',    e => onStart(e.clientX, e.clientY));
-  document.addEventListener('mouseup',    onEnd);
-  document.addEventListener('mouseleave', onEnd);
-
-  canvas.addEventListener('touchstart', e => {
-    e.preventDefault();
-    onStart(e.touches[0].clientX, e.touches[0].clientY);
-  }, { passive: false });
-  canvas.addEventListener('touchend',    e => { e.preventDefault(); onEnd(); }, { passive: false });
-  canvas.addEventListener('touchcancel', onEnd);
-
-  voltar.addEventListener('click', e => { e.preventDefault(); triggerExit(); });
-
-  document.fonts.ready.then(() => {
-    requestAnimationFrame(loop);
-    requestAnimationFrame(() => flash.style.opacity = '0');
-  });
+  const flash=document.getElementById('flash'),canvas=document.getElementById('c'),ctx=canvas.getContext('2d'),voltar=document.getElementById('voltar'),quote=document.getElementById('quote');
+  function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
+  resize();window.addEventListener('resize',resize);
+  const N_LINES=10,TOTAL_TIME=29,COUNT_START=30,CLOSE_SPEED=0.6,LINE_TIME=TOTAL_TIME/N_LINES;
+  function circleR(){return Math.min(canvas.width,canvas.height)*0.055;}
+  function marginTop(){return canvas.height*0.08;}
+  function marginBottom(){return canvas.height*0.10;}
+  function circleStartY(){return canvas.height-marginBottom()-circleR();}
+  function linesAreaTop(){return marginTop();}
+  function linesAreaBottom(){return circleStartY()-circleR()-canvas.height*0.04;}
+  function segLen(){return canvas.width*0.38;}
+  function lineRestY(i){return linesAreaTop()+(i/(N_LINES-1))*(linesAreaBottom()-linesAreaTop());}
+  let pressed=false,progress=0,count=COUNT_START,leaving=false,finished=false,quoteVisible=false;
+  const lineOpen=new Array(N_LINES).fill(0);
+  function lineProgress(i){const order=N_LINES-1-i,t0=order*LINE_TIME,t1=t0+LINE_TIME;if(progress<=t0)return 0;if(progress>=t1)return 1;return(progress-t0)/LINE_TIME;}
+  function circleY(){const startY=circleStartY(),endY=linesAreaTop()-circleR()*0.5;return startY-(progress/TOTAL_TIME)*(startY-endY);}
+  function ease(t){return t<0.5?2*t*t:-1+(4-2*t)*t;}
+  function updateQuote(){const s=(count<=20&&count>10);if(s&&!quoteVisible){quote.style.opacity='1';quoteVisible=true;}else if(!s&&quoteVisible){quote.style.opacity='0';quoteVisible=false;}}
+  function triggerExit(){if(leaving)return;leaving=true;if(!muted)fadeOutAudio();flash.style.opacity='1';setTimeout(()=>window.location.href='../',4000);}
+  function isOnVoltar(x,y){const r=voltar.getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;}
+  let lastTick=null,doneTimer=0;
+  function loop(ts){if(!lastTick)lastTick=ts;const delta=(ts-lastTick)/1000;lastTick=ts;if(!finished){if(pressed){progress=Math.min(TOTAL_TIME,progress+delta);count=Math.max(0,count-delta);if(count<=0||progress>=TOTAL_TIME){finished=true;doneTimer=0;}}else{progress=Math.max(0,progress-delta*CLOSE_SPEED);count=Math.min(COUNT_START,count+delta*CLOSE_SPEED);}updateQuote();}else{doneTimer+=delta;if(doneTimer>=1)triggerExit();}
+  for(let i=0;i<N_LINES;i++){lineOpen[i]=lineProgress(i);}
+  draw();requestAnimationFrame(loop);}
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const cx=canvas.width/2,cy=circleY(),r=circleR(),sl=segLen(),edge=canvas.width*0.03;
+    ctx.strokeStyle='rgba(30,28,25,0.75)';ctx.lineWidth=1.2;ctx.lineCap='round';
+    for(let i=0;i<N_LINES;i++){const open=ease(lineOpen[i]),restY=lineRestY(i),shift=(cx-edge)*open;
+      ctx.beginPath();ctx.moveTo(cx-sl-shift,restY);ctx.lineTo(cx-shift,restY);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(cx+shift,restY);ctx.lineTo(cx+sl+shift,restY);ctx.stroke();}
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+    if(count<COUNT_START){ctx.save();ctx.fillStyle='rgba(30,28,25,0.75)';ctx.font='1.4rem "VeteranTypewriter", serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(Math.ceil(count),cx,cy);ctx.restore();}}
+  function onStart(x,y){if(leaving||finished)return;if(isOnVoltar(x,y)){triggerExit();return;}pressed=true;}
+  function onEnd(){pressed=false;}
+  canvas.addEventListener('mousedown',e=>onStart(e.clientX,e.clientY));
+  document.addEventListener('mouseup',onEnd);document.addEventListener('mouseleave',onEnd);
+  canvas.addEventListener('touchstart',e=>{e.preventDefault();onStart(e.touches[0].clientX,e.touches[0].clientY);},{passive:false});
+  canvas.addEventListener('touchend',e=>{e.preventDefault();onEnd();},{passive:false});
+  canvas.addEventListener('touchcancel',onEnd);
+  voltar.addEventListener('click',e=>{e.preventDefault();triggerExit();});
+  document.fonts.ready.then(()=>{playNext();requestAnimationFrame(loop);requestAnimationFrame(()=>flash.style.opacity='0');});
 </script>
 </body>
 </html>
