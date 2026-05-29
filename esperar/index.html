@@ -42,6 +42,9 @@
     }
 
     #countdown { position: fixed; bottom: 10rem; left: 50%; transform: translateX(-50%); font-family: 'VeteranTypewriter', serif; font-size: 1.1rem; letter-spacing: 0.12em; color: rgba(30,28,25,0.55); pointer-events: none; opacity: 0; transition: opacity 1.2s ease; z-index: 50; }
+    #quote { position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%); text-align: center; font-family: 'VeteranTypewriter', serif; color: rgba(30,28,25,0.75); opacity: 0; transition: opacity 1.2s ease; pointer-events: none; white-space: normal; width: 80vw; max-width: 360px; z-index: 50; }
+    #quote .frase { font-size: 0.9rem; letter-spacing: 0.06em; line-height: 1.5; display: block; margin-bottom: 0.4rem; }
+    #quote .autor { font-size: 0.72rem; letter-spacing: 0.1em; opacity: 0.6; display: block; }
     #voltar { position: fixed; bottom: 1.8rem; left: 50%; transform: translateX(-50%); font-family: 'VeteranTypewriter', serif; font-size: 0.85rem; color: rgba(30,28,25,0.5); text-decoration: none; letter-spacing: 0.1em; z-index: 200; padding: 1rem 1.5rem; }
     #voltar:hover { opacity: 0.3; }
     #mute-btn { position: fixed; top: 1.4rem; right: 1.6rem; background: none; border: none; cursor: pointer; font-family: 'VeteranTypewriter', serif; font-size: 0.72rem; letter-spacing: 0.12em; color: rgba(30,28,25,0.35); z-index: 200; padding: 0.5rem; transition: opacity 0.3s; }
@@ -63,10 +66,15 @@
 
 <canvas id="c"></canvas>
 <div id="countdown"></div>
+<div id="quote"><span class="frase"></span><span class="autor"></span></div>
 <a id="voltar" href="../">Permanecer</a>
 <script>
   const cores=['#E6E0CF','#DFDAE6','#D5E6E2','#E6E2D5','#DBD8E6','#D0DDE6','#EBEFFF','#FFDEF0','#E1FFEF'];
   document.body.style.backgroundColor=cores[Math.floor(Math.random()*cores.length)];
+  const frases=[{html:'\u201cO futuro inteiro est\u00e1 na incerteza:<br>viva imediatamente.\u201d',autor:'S\u00eaneca'},{html:'\u201cDedica-se a esperar o futuro<br>apenas quem n\u00e3o sabe<br>viver o presente.\u201d',autor:'Estoicismo'}];
+  const escolha=frases[Math.floor(Math.random()*frases.length)];
+  document.querySelector('#quote .frase').innerHTML=escolha.html;
+  document.querySelector('#quote .autor').textContent=escolha.autor;
 
   const TRACKS=['../audio/1.AAC','../audio/2.AAC','../audio/3.AAC','../audio/4.AAC','../audio/5.AAC'];
   let lastTrack=-1,muted=false;
@@ -103,13 +111,13 @@
   intro.addEventListener('click',startGame);
   intro.addEventListener('touchstart',e=>{e.preventDefault();startGame();},{passive:false});
 
-  const flash=document.getElementById('flash'),canvas=document.getElementById('c'),ctx=canvas.getContext('2d'),voltar=document.getElementById('voltar'),countEl=document.getElementById('countdown');
+  const flash=document.getElementById('flash'),canvas=document.getElementById('c'),ctx=canvas.getContext('2d'),voltar=document.getElementById('voltar'),countEl=document.getElementById('countdown'),quote=document.getElementById('quote');
   function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
   resize();window.addEventListener('resize',resize);
 
   const DURATION=30,DOT_R=4,GAP=18,MAX_RINGS=8,STEP=DURATION/MAX_RINGS;
   const FADE_IN_SPD=0.00055,FADE_OUT_SPD=0.00040;
-  let count=DURATION,pressing=false,lastTick=null,leaving=false;
+  let count=DURATION,pressing=false,lastTick=null,leaving=false,quoteVisible=false;
   const slots=Array.from({length:MAX_RINGS+1},()=>({alpha:0,target:0}));
 
   function activeLevel(){if(count>=DURATION)return -1;return Math.min(MAX_RINGS,Math.floor((DURATION-count)/STEP));}
@@ -118,13 +126,15 @@
   function ringRadius(i){return DOT_R+i*GAP;}
   function circleY(){return canvas.height*0.28;}
 
+  function updateQuote(){const s=(count<=20&&count>10);if(s&&!quoteVisible){quote.style.opacity='1';quoteVisible=true;}else if(!s&&quoteVisible){quote.style.opacity='0';quoteVisible=false;}}
+
   function draw(ts){
     if(!lastTick)lastTick=ts;
     const delta=ts-lastTick;lastTick=ts;
     if(pressing)count=Math.max(0,count-delta/1000);
     else count=Math.min(DURATION,count+delta/1000);
     if(count<=0&&!leaving)triggerExit('../');
-    updateSlots();tickSlots(delta);
+    updateSlots();tickSlots(delta);updateQuote();
     const cx=canvas.width/2,cy=circleY();
     ctx.clearRect(0,0,canvas.width,canvas.height);
     for(let i=MAX_RINGS;i>=0;i--){const s=slots[i];if(s.alpha<=0.002)continue;const r=ringRadius(i);
