@@ -54,8 +54,9 @@
 
 <div id="intro">
   <div id="intro-text">
-    <span id="line1">Clique na tela</span>
-    <span id="line2">e se espere.</span>
+    <span id="line1">Clique na tela.</span>
+    <span id="line2">Esperar tamb&#233;m &#233;</span>
+    <span id="line3">uma forma de presen&#231;a.</span>
   </div>
   <div id="intro-hint">toque para come&#231;ar</div>
 </div>
@@ -77,7 +78,6 @@
   muteBtn.addEventListener('click',(e)=>{e.stopPropagation();muted=!muted;audio.volume=muted?0:0.25;muteBtn.textContent=muted?'\u266f':'\u266a';muteBtn.style.opacity=muted?'0.18':'';});
   function fadeOutAudio(){const steps=40,duration=2000,interval=duration/steps;const volStep=audio.volume/steps;let s=0;const t=setInterval(()=>{s++;audio.volume=Math.max(0,audio.volume-volStep);if(s>=steps)clearInterval(t);},interval);}
 
-  // INTRO
   const intro=document.getElementById('intro');
   const hint=document.getElementById('intro-hint');
   let gameStarted=false;
@@ -86,7 +86,8 @@
     intro.style.opacity='1';
     setTimeout(()=>{const l=document.getElementById('line1');l.style.opacity='1';l.style.transform='translateY(0)';},400);
     setTimeout(()=>{const l=document.getElementById('line2');l.style.opacity='1';l.style.transform='translateY(0)';},1200);
-    setTimeout(()=>{hint.style.opacity='1';},2800);
+    setTimeout(()=>{const l=document.getElementById('line3');l.style.opacity='1';l.style.transform='translateY(0)';},1900);
+    setTimeout(()=>{hint.style.opacity='1';},3400);
   }
 
   function startGame(){
@@ -102,7 +103,6 @@
   intro.addEventListener('click',startGame);
   intro.addEventListener('touchstart',e=>{e.preventDefault();startGame();},{passive:false});
 
-  // GAME
   const flash=document.getElementById('flash'),canvas=document.getElementById('c'),ctx=canvas.getContext('2d'),voltar=document.getElementById('voltar'),countEl=document.getElementById('countdown');
   function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
   resize();window.addEventListener('resize',resize);
