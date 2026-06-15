@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab</title>
+  <style>
+    @font-face { font-family: 'VeteranTypewriter'; src: url('../fonts/veteran typewriter.ttf') format('truetype'); }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; user-select: none; -webkit-user-select: none; background-color: #E6E2D5; }
+    canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; }
+    #label { position: fixed; top: 1.2rem; left: 50%; transform: translateX(-50%); font-family: 'VeteranTypewriter', serif; font-size: 0.6rem; letter-spacing: 0.25em; color: rgba(30,28,25,0.25); }
+    #voltar { position: fixed; bottom: 1.8rem; left: 50%; transform: translateX(-50%); font-family: 'VeteranTypewriter', serif; font-size: 0.85rem; color: rgba(30,28,25,0.4); text-decoration: none; letter-spacing: 0.1em; padding: 1rem 1.5rem; }
+  </style>
+</head>
+<body>
+<div id="label">laboratório</div>
+<canvas id="c"></canvas>
+<a id="voltar" href="../">voltar</a>
+<script>
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+
+  function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // — Parâmetros da cena —
+  const LINE_HALF  = () => Math.min(canvas.width, canvas.height) * 0.18; // metade do comprimento da linha
+  const R          = () => Math.min(canvas.width, canvas.height) * 0.045; // raio do círculo
+  const GRAVITY    = 38;   // px/s² — viscosidade/gravidade para baixo
+  const SPRING_K   = 6.2;  // força de mola ao pressionar (retorno ao centro)
+  const DAMPING    = 0.88; // amortecimento
+
+  let cy_circle, vel = 0, pressing = false, lastTick = null;
+
+  function neutralY() { return canvas.height / 2; }
+  function topY()     { return canvas.height / 2 - LINE_HALF(); }
+  function botY()     { return canvas.height / 2 + LINE_HALF(); }
+
+  function init() { cy_circle = neutralY(); vel = 0; }
+  init();
+  window.addEventListener('resize', init);
+
+  function draw(ts) {
+    if (!lastTick) lastTick = ts;
+    const dt = Math.min((ts - lastTick) / 1000, 0.05);
+    lastTick = ts;
+
+    const cx = canvas.width / 2;
+    const neutral = neutralY();
+    const top = topY();
+    const bot = botY();
+    const r = R();
+
+    // — Física —
+    if (pressing) {
+      // mola em direção ao centro neutro
+      const dist = neutral - cy_circle;
+      vel += dist * SPRING_K * dt * 60 * dt;
+    } else {
+      // gravidade viscosa para baixo
+      vel += GRAVITY * dt;
+    }
+    vel *= DAMPING;
+    cy_circle += vel;
+
+    // limites: não sai da linha
+    if (cy_circle > bot - r) { cy_circle = bot - r; vel = 0; }
+    if (cy_circle < top + r) { cy_circle = top + r; vel = 0; }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // — Linha vertical —
+    ctx.beginPath();
+    ctx.moveTo(cx, top);
+    ctx.lineTo(cx, bot);
+    ctx.strokeStyle = 'rgba(30,28,25,0.30)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // — Marca do centro neutro (pequeno traço horizontal) —
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, neutral);
+    ctx.lineTo(cx + 8, neutral);
+    ctx.strokeStyle = 'rgba(30,28,25,0.20)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // — Círculo —
+    ctx.beginPath();
+    ctx.arc(cx, cy_circle, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(30,28,25,0.75)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    requestAnimationFrame(draw);
+  }
+
+  // — Eventos —
+  function onDown(e) {
+    const t = e.touches ? e.touches[0] : e;
+    const vb = document.getElementById('voltar').getBoundingClientRect();
+    if (t.clientX >= vb.left && t.clientX <= vb.right && t.clientY >= vb.top && t.clientY <= vb.bottom) return;
+    if (e.touches) e.preventDefault();
+    pressing = true;
+  }
+  function onUp(e) { if (e.touches) e.preventDefault(); pressing = false; }
+
+  canvas.addEventListener('mousedown', onDown);
+  window.addEventListener('mouseup', onUp);
+  canvas.addEventListener('touchstart', onDown, { passive: false });
+  window.addEventListener('touchend', onUp, { passive: false });
+  window.addEventListener('touchcancel', onUp);
+
+  document.fonts.ready.then(() => requestAnimationFrame(draw));
+</script>
+</body>
+</html>
