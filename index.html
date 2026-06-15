@@ -79,11 +79,82 @@
       transition: opacity 0.3s;
     }
     #mute-btn:hover { opacity: 0.15; }
+
+    /* ── Tela introdutória ── */
+    #onboarding {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      z-index: 300;
+      cursor: pointer;
+      background-color: inherit;
+      opacity: 0;
+      transition: opacity 2s ease;
+      pointer-events: none;
+    }
+    #onboarding.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #onboarding.hiding {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .ob-line {
+      font-family: 'VeteranTypewriter', serif;
+      font-size: 1.0rem;
+      font-weight: 300;
+      letter-spacing: 0.13em;
+      line-height: 2.0;
+      color: rgba(30,28,25,0.70);
+      text-align: center;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 1.8s ease, transform 1.8s ease;
+    }
+    .ob-line.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .ob-sep {
+      width: 1px;
+      height: 2.4rem;
+      background: rgba(30,28,25,0.18);
+      margin: 1.6rem 0;
+      opacity: 0;
+      transition: opacity 1.8s ease;
+    }
+    .ob-sep.show { opacity: 1; }
+    #ob-hint {
+      margin-top: 3.2rem;
+      font-family: 'VeteranTypewriter', serif;
+      font-size: 0.60rem;
+      letter-spacing: 0.24em;
+      color: rgba(30,28,25,0.28);
+      opacity: 0;
+      transition: opacity 2s ease;
+    }
+    #ob-hint.show { opacity: 1; }
   </style>
 </head>
 <body>
 <div id="flash"></div>
 <button id="mute-btn" title="silenciar">&#9834;</button>
+
+<!-- Tela introdutória (primeira visita) -->
+<div id="onboarding" role="dialog" aria-label="Introdu&#231;&#227;o">
+  <span class="ob-line" id="ob1">Cada palavra &#233; uma pr&#225;tica.</span>
+  <span class="ob-line" id="ob2">Escolha uma.</span>
+  <div class="ob-sep" id="ob-sep"></div>
+  <span class="ob-line" id="ob3">Mantenha o dedo pressionado</span>
+  <span class="ob-line" id="ob4">e permane&#231;a.</span>
+  <div id="ob-hint">toque para continuar</div>
+</div>
+
 <div id="main">
   <div id="header">
     <h1>Permanecer</h1>
@@ -100,6 +171,7 @@
     </ul>
   </nav>
 </div>
+
 <script>
   const cores = [
     '#E6E0CF','#DFDAE6','#D5E6E2',
@@ -109,31 +181,24 @@
   const cor = cores[Math.floor(Math.random() * cores.length)];
   document.body.style.backgroundColor = cor;
 
-  const flash  = document.getElementById('flash');
-  const header = document.getElementById('header');
+  const flash   = document.getElementById('flash');
+  const header  = document.getElementById('header');
+  const ob      = document.getElementById('onboarding');
+  const obHint  = document.getElementById('ob-hint');
 
+  /* ── Áudio ── */
   const TRACKS = ['audio/1.AAC','audio/2.AAC','audio/3.AAC','audio/4.AAC','audio/5.AAC'];
-  let lastTrack = -1;
-  let muted = false;
+  let lastTrack = -1, muted = false;
   const audio = new Audio();
   audio.volume = 0.25;
-
   function pickTrack() {
     let idx;
     do { idx = Math.floor(Math.random() * TRACKS.length); } while (idx === lastTrack && TRACKS.length > 1);
     lastTrack = idx;
     return TRACKS[idx];
   }
-  function playNext() {
-    audio.src = pickTrack();
-    audio.volume = muted ? 0 : 0.25;
-    audio.play().catch(() => {});
-  }
+  function playNext() { audio.src = pickTrack(); audio.volume = muted ? 0 : 0.25; audio.play().catch(() => {}); }
   audio.addEventListener('ended', playNext);
-  document.addEventListener('click', function startAudio() {
-    if (audio.paused) playNext();
-    document.removeEventListener('click', startAudio);
-  }, { once: true });
 
   const muteBtn = document.getElementById('mute-btn');
   muteBtn.addEventListener('click', (e) => {
@@ -143,25 +208,64 @@
     muteBtn.textContent = muted ? '\u266f' : '\u266a';
     muteBtn.style.opacity = muted ? '0.18' : '';
   });
-
   function fadeOutAudio() {
     const steps = 40, duration = 2000, interval = duration / steps;
     const volStep = audio.volume / steps;
     let s = 0;
-    const t = setInterval(() => {
-      s++;
-      audio.volume = Math.max(0, audio.volume - volStep);
-      if (s >= steps) clearInterval(t);
-    }, interval);
+    const t = setInterval(() => { s++; audio.volume = Math.max(0, audio.volume - volStep); if (s >= steps) clearInterval(t); }, interval);
   }
 
+  /* ── Onboarding ── */
+  const STORAGE_KEY = 'permanecer_visited';
+  const isFirstVisit = !localStorage.getItem(STORAGE_KEY);
+
+  function dismissOnboarding() {
+    ob.removeEventListener('click', dismissOnboarding);
+    ob.removeEventListener('touchstart', dismissOnboarding);
+    ob.classList.remove('visible');
+    ob.classList.add('hiding');
+    localStorage.setItem(STORAGE_KEY, '1');
+    // inicia áudio ao dispensar
+    if (audio.paused) playNext();
+    setTimeout(() => { ob.style.display = 'none'; }, 2000);
+  }
+
+  function showOnboarding() {
+    ob.classList.add('visible');
+    const delays = [400, 1100, null, 1900, 2500];
+    const ids    = ['ob1','ob2','ob-sep','ob3','ob4'];
+    ids.forEach((id, i) => {
+      const d = delays[i];
+      if (d === null) return;
+      setTimeout(() => document.getElementById(id).classList.add('show'), d);
+    });
+    setTimeout(() => document.getElementById('ob-sep').classList.add('show'), 1600);
+    setTimeout(() => obHint.classList.add('show'), 3800);
+    ob.addEventListener('click', dismissOnboarding);
+    ob.addEventListener('touchstart', (e) => { e.preventDefault(); dismissOnboarding(); }, { passive: false });
+  }
+
+  /* ── Init ── */
   document.fonts.ready.then(() => {
     requestAnimationFrame(() => {
       flash.style.opacity = '0';
-      setTimeout(() => { header.style.opacity = '1'; }, 1000);
+      if (isFirstVisit) {
+        // mostra onboarding após flash sumir
+        setTimeout(showOnboarding, 800);
+        // home aparece só quando onboarding for dispensado
+        ob.addEventListener('click', () => setTimeout(() => { header.style.opacity = '1'; }, 600), { once: true });
+        ob.addEventListener('touchstart', () => setTimeout(() => { header.style.opacity = '1'; }, 600), { once: true });
+      } else {
+        setTimeout(() => { header.style.opacity = '1'; }, 1000);
+        document.addEventListener('click', function startAudio() {
+          if (audio.paused) playNext();
+          document.removeEventListener('click', startAudio);
+        }, { once: true });
+      }
     });
   });
 
+  /* ── Navegação ── */
   document.querySelectorAll('a').forEach(a => {
     a.addEventListener('click', function(e) {
       e.preventDefault();
