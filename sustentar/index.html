@@ -115,34 +115,56 @@
   let pressed=false,countdownStarted=false,count=30,leaving=false,quoteVisible=false;
   let strokeExtra=0;
   const strokeExtraMax=6,strokeGrowSpeed=80,strokeShrinkSpeed=60;
-  // Gravidade mais pesada; MAG_CURVE > 1 faz a força crescer mais rápido quando o círculo se aproxima
-  const GRAVITY=480,DAMPING=0.018,MAG_STRENGTH=2200,MAG_CURVE=1.4,REST_SPRING=1.2;
-  const COUNT_RECOVER_SPEED = 0.6; // velocidade de regressão quando solto
+
+  // Física: força fraca com alta viscosidade = movimento lento e resistido (~2.5s)
+  // MAG_STRENGTH baixo + VISCOSITY alto = chega devagar
+  // MAG_CURVE < 1: força maior longe, sutil aceleração na chegada via boost próximo
+  const GRAVITY = 480;
+  const MAG_STRENGTH = 320;   // força de atração baixa
+  const MAG_CURVE = 0.55;     // decai rápido com distância — mais força longe, menos perto
+  const VISCOSITY = 5.5;      // amortecimento viscoso (resiste ao movimento)
+  const REST_SPRING = 0.8;
+  const NEAR_BOOST_DIST = 0.35; // fração da distância inicial para ativar boost
+  const NEAR_BOOST = 1.8;     // multiplicador sutil de força quando muito próximo
+  const COUNT_RECOVER_SPEED = 0.6;
 
   function updateQuote(){const s=(countdownStarted&&count<=20&&count>10);if(s&&!quoteVisible){quote.style.opacity='1';quoteVisible=true;}else if(!s&&quoteVisible){quote.style.opacity='0';quoteVisible=false;}}
   function triggerExit(href){if(leaving)return;leaving=true;if(!muted)fadeOutAudio();flash.style.opacity='1';setTimeout(()=>window.location.href=href,4000);}
   function isOnVoltar(x,y){const r=voltar.getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;}
   let lastTick=null;
+
   function update(delta){
     const dt=delta/1000;
     if(pressed){strokeExtra=Math.min(strokeExtraMax,strokeExtra+strokeGrowSpeed*dt);}else{strokeExtra=Math.max(0,strokeExtra-strokeShrinkSpeed*dt);}
     const baseX=canvas.width/2,baseY=canvas.height*0.75;
+
     if(pressed){
-      const dx=smallX-largeX,dy=smallY-largeY,dist=Math.sqrt(dx*dx+dy*dy)||1;
+      const dx=smallX-largeX,dy=smallY-largeY;
+      const dist=Math.sqrt(dx*dx+dy*dy)||1;
       const nx=dx/dist,ny=dy/dist;
-      // Força aumenta rapidamente quando perto (curva > 1 = aceleração na aproximação)
-      const normDist=dist/(rLarge()*4);
-      const forceMag=MAG_STRENGTH*Math.pow(normDist,MAG_CURVE);
-      largeVX+=nx*forceMag*dt;largeVY+=ny*forceMag*dt;
-    }else{
+      const refDist=Math.min(canvas.width,canvas.height)*0.5; // distância de referência
+      const normDist=dist/refDist;
+      let forceMag=MAG_STRENGTH*Math.pow(normDist,MAG_CURVE);
+      // boost sutil quando muito próximo (últimos 35% da trajetória)
+      if(normDist < NEAR_BOOST_DIST) forceMag *= NEAR_BOOST;
+      largeVX+=nx*forceMag*dt;
+      largeVY+=ny*forceMag*dt;
+    } else {
       largeVY+=GRAVITY*dt;
       largeVX+=(baseX-largeX)*REST_SPRING*dt;
       largeVY+=(baseY-largeY)*REST_SPRING*dt;
     }
-    const damp=1-DAMPING*(delta/16);largeVX*=damp;largeVY*=damp;largeX+=largeVX*dt;largeY+=largeVY*dt;
+
+    // Viscosidade: resistência proporcional à velocidade (não ao frame)
+    const viscDamp = Math.max(0, 1 - VISCOSITY * dt);
+    largeVX *= viscDamp;
+    largeVY *= viscDamp;
+
+    largeX+=largeVX*dt;largeY+=largeVY*dt;
     const rl=rLarge();
     if(largeX-rl<0){largeX=rl;largeVX*=-0.4;}if(largeX+rl>canvas.width){largeX=canvas.width-rl;largeVX*=-0.4;}
     if(largeY-rl<0){largeY=rl;largeVY*=-0.4;}if(largeY+rl>canvas.height){largeY=canvas.height-rl;largeVY*=-0.4;}
+
     if(countdownStarted){
       if(pressed&&count>0){
         count=Math.max(0,count-dt);
@@ -153,6 +175,7 @@
     }
     updateQuote();
   }
+
   function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     const rs=rSmall(),rl=rLarge();
