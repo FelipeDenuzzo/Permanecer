@@ -103,14 +103,23 @@
   intro.addEventListener('touchstart',e=>{e.preventDefault();startGame();},{passive:false});
 
   const flash=document.getElementById('flash'),canvas=document.getElementById('c'),ctx=canvas.getContext('2d'),voltar=document.getElementById('voltar'),quote=document.getElementById('quote');
+
   function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
   resize(); window.addEventListener('resize',()=>{resize();initPositions();});
+
   function rSmall(){return Math.min(canvas.width,canvas.height)*0.055;}
   function rLarge(){return Math.min(canvas.width,canvas.height)*0.10;}
+
+  // Limite inferior: topo do elemento #voltar menos 18px de respiro
+  function floorY(){
+    return voltar.getBoundingClientRect().top - 18;
+  }
+
   let smallX,smallY,largeX,largeY,largeVX,largeVY;
   function initPositions(){
     smallX=canvas.width/2; smallY=canvas.height*0.25;
-    largeX=canvas.width/2; largeY=canvas.height*0.75;
+    // repouso: apoiado sobre o limite inferior
+    largeX=canvas.width/2; largeY=floorY()-rLarge();
     largeVX=0; largeVY=0;
   }
   initPositions();
@@ -119,17 +128,14 @@
   let strokeExtra=0;
   const strokeExtraMax=6,strokeGrowSpeed=80,strokeShrinkSpeed=60;
 
-  // Abordagem: mover o circulo via lerp direto na posição com velocidade máxima limitada
-  // Isso garante ~2.5s perceptivelmente lentos, com leve aceleração no final
-  const MOVE_SPEED_BASE = 0.28;   // fração da distância por segundo (lento)
-  const MOVE_SPEED_NEAR = 0.55;   // acelera quando perto (boost sutil)
-  const NEAR_THRESHOLD = 0.3;     // fração da distância inicial considerada "perto"
-  const GRAVITY = 480;
-  const REST_SPRING = 0.8;
-  const FALL_DAMP = 0.88;         // amortecimento ao cair/repousar
+  const MOVE_SPEED_BASE = 0.28;
+  const MOVE_SPEED_NEAR = 0.55;
+  const NEAR_THRESHOLD  = 0.3;
+  const GRAVITY         = 480;
+  const REST_SPRING     = 0.8;
+  const FALL_DAMP       = 0.88;
   const COUNT_RECOVER_SPEED = 0.6;
 
-  // distância inicial de referência (calculada no primeiro frame pressionado)
   let initDist = null;
 
   function updateQuote(){const s=(countdownStarted&&count<=20&&count>10);if(s&&!quoteVisible){quote.style.opacity='1';quoteVisible=true;}else if(!s&&quoteVisible){quote.style.opacity='0';quoteVisible=false;}}
@@ -141,40 +147,37 @@
     const dt=delta/1000;
     if(pressed){strokeExtra=Math.min(strokeExtraMax,strokeExtra+strokeGrowSpeed*dt);}else{strokeExtra=Math.max(0,strokeExtra-strokeShrinkSpeed*dt);}
 
-    const baseX=canvas.width/2, baseY=canvas.height*0.75;
+    const baseX = canvas.width/2;
+    const floor  = floorY();
+    const baseY  = floor - rLarge(); // repouso exatamente sobre o limite
 
     if(pressed){
       const dx=smallX-largeX, dy=smallY-largeY;
       const dist=Math.sqrt(dx*dx+dy*dy)||0.001;
-
-      // Captura distância inicial para normalizar "perto"
       if(initDist===null) initDist=dist;
-
-      // Define velocidade: mais rápido quando perto (boost sutil)
-      const nearRatio = dist / initDist;
+      const nearRatio = dist/initDist;
       const speed = nearRatio < NEAR_THRESHOLD ? MOVE_SPEED_NEAR : MOVE_SPEED_BASE;
-
-      // Move uma fração da distância restante por segundo — cria desaceleração natural
-      // mas limitado para garantir lentidão perceptivel no início
-      const step = speed * dt;
-      largeX += (dx / dist) * Math.min(step * dist, dist);
-      largeY += (dy / dist) * Math.min(step * dist, dist);
-      largeVX = 0; largeVY = 0; // zeramos veloc para não acumular
-
+      const step = speed*dt;
+      largeX += (dx/dist)*Math.min(step*dist, dist);
+      largeY += (dy/dist)*Math.min(step*dist, dist);
+      largeVX=0; largeVY=0;
     } else {
-      initDist = null;
-      largeVY += GRAVITY * dt;
-      largeVX += (baseX - largeX) * REST_SPRING * dt;
-      largeVY += (baseY - largeY) * REST_SPRING * dt;
+      initDist=null;
+      largeVY += GRAVITY*dt;
+      largeVX += (baseX-largeX)*REST_SPRING*dt;
+      largeVY += (baseY-largeY)*REST_SPRING*dt;
       largeVX *= FALL_DAMP;
       largeVY *= FALL_DAMP;
-      largeX += largeVX * dt;
-      largeY += largeVY * dt;
+      largeX += largeVX*dt;
+      largeY += largeVY*dt;
     }
 
-    const rl=rLarge();
-    if(largeX-rl<0){largeX=rl;largeVX*=-0.4;}if(largeX+rl>canvas.width){largeX=canvas.width-rl;largeVX*=-0.4;}
-    if(largeY-rl<0){largeY=rl;largeVY*=-0.4;}if(largeY+rl>canvas.height){largeY=canvas.height-rl;largeVY*=-0.4;}
+    const rl = rLarge();
+    // Colisao com o limite inferior (topo do texto Permanecer)
+    if(largeY+rl > floor){ largeY=floor-rl; largeVY*=-0.2; }
+    if(largeY-rl < 0)    { largeY=rl;       largeVY*=-0.4; }
+    if(largeX-rl < 0)    { largeX=rl;       largeVX*=-0.4; }
+    if(largeX+rl > canvas.width){ largeX=canvas.width-rl; largeVX*=-0.4; }
 
     if(countdownStarted){
       if(pressed&&count>0){
