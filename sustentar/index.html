@@ -52,7 +52,7 @@
 
 <div id="intro">
   <div id="intro-text">
-    <span id="line1">Mantenha o dedo no c&#237;rculo menor</span>
+    <span id="line1">Toque a tela</span>
     <span id="line2">e sustente</span>
     <span id="line3">a sua ess&#234;ncia.</span>
   </div>
@@ -61,7 +61,7 @@
 
 <canvas id="c"></canvas>
 <div id="quote">
-  <span class="frase">&#8220;O sofrimento precisa ser superado,<br>e o único meio de superá-lo<br>é suportando-o.&#8221;</span>
+  <span class="frase">&#8220;O sofrimento precisa ser superado,<br>e o &#250;nico meio de super&#225;-lo<br>&#233; suportando-o.&#8221;</span>
   <span class="autor">Carl Jung</span>
 </div>
 <a id="voltar" href="../">Permanecer</a>
@@ -115,22 +115,42 @@
   let pressed=false,countdownStarted=false,count=30,leaving=false,quoteVisible=false;
   let strokeExtra=0;
   const strokeExtraMax=6,strokeGrowSpeed=80,strokeShrinkSpeed=60;
-  const GRAVITY=280,DAMPING=0.018,MAG_STRENGTH=1800,MAG_CURVE=0.6,REST_SPRING=1.2;
+  // Gravidade mais pesada; MAG_CURVE > 1 faz a força crescer mais rápido quando o círculo se aproxima
+  const GRAVITY=480,DAMPING=0.018,MAG_STRENGTH=2200,MAG_CURVE=1.4,REST_SPRING=1.2;
+  const COUNT_RECOVER_SPEED = 0.6; // velocidade de regressão quando solto
+
   function updateQuote(){const s=(countdownStarted&&count<=20&&count>10);if(s&&!quoteVisible){quote.style.opacity='1';quoteVisible=true;}else if(!s&&quoteVisible){quote.style.opacity='0';quoteVisible=false;}}
   function triggerExit(href){if(leaving)return;leaving=true;if(!muted)fadeOutAudio();flash.style.opacity='1';setTimeout(()=>window.location.href=href,4000);}
   function isOnVoltar(x,y){const r=voltar.getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;}
-  function hitSmall(x,y){const dx=x-smallX,dy=y-smallY;return Math.sqrt(dx*dx+dy*dy)<=rSmall()+12;}
   let lastTick=null;
   function update(delta){
     const dt=delta/1000;
     if(pressed){strokeExtra=Math.min(strokeExtraMax,strokeExtra+strokeGrowSpeed*dt);}else{strokeExtra=Math.max(0,strokeExtra-strokeShrinkSpeed*dt);}
     const baseX=canvas.width/2,baseY=canvas.height*0.75;
-    if(pressed){const dx=smallX-largeX,dy=smallY-largeY,dist=Math.sqrt(dx*dx+dy*dy)||1,nx=dx/dist,ny=dy/dist,forceMag=MAG_STRENGTH*Math.pow(dist/(rLarge()*4),MAG_CURVE);largeVX+=nx*forceMag*dt;largeVY+=ny*forceMag*dt;}else{largeVY+=GRAVITY*dt;largeVX+=(baseX-largeX)*REST_SPRING*dt;largeVY+=(baseY-largeY)*REST_SPRING*dt;}
+    if(pressed){
+      const dx=smallX-largeX,dy=smallY-largeY,dist=Math.sqrt(dx*dx+dy*dy)||1;
+      const nx=dx/dist,ny=dy/dist;
+      // Força aumenta rapidamente quando perto (curva > 1 = aceleração na aproximação)
+      const normDist=dist/(rLarge()*4);
+      const forceMag=MAG_STRENGTH*Math.pow(normDist,MAG_CURVE);
+      largeVX+=nx*forceMag*dt;largeVY+=ny*forceMag*dt;
+    }else{
+      largeVY+=GRAVITY*dt;
+      largeVX+=(baseX-largeX)*REST_SPRING*dt;
+      largeVY+=(baseY-largeY)*REST_SPRING*dt;
+    }
     const damp=1-DAMPING*(delta/16);largeVX*=damp;largeVY*=damp;largeX+=largeVX*dt;largeY+=largeVY*dt;
     const rl=rLarge();
     if(largeX-rl<0){largeX=rl;largeVX*=-0.4;}if(largeX+rl>canvas.width){largeX=canvas.width-rl;largeVX*=-0.4;}
     if(largeY-rl<0){largeY=rl;largeVY*=-0.4;}if(largeY+rl>canvas.height){largeY=canvas.height-rl;largeVY*=-0.4;}
-    if(countdownStarted&&pressed&&count>0){count=Math.max(0,count-dt);if(count<=0)triggerExit('../');}
+    if(countdownStarted){
+      if(pressed&&count>0){
+        count=Math.max(0,count-dt);
+        if(count<=0)triggerExit('../');
+      } else if(!pressed){
+        count=Math.min(30,count+COUNT_RECOVER_SPEED*dt);
+      }
+    }
     updateQuote();
   }
   function draw(){
@@ -142,7 +162,7 @@
   }
   function loop(ts){if(!lastTick)lastTick=ts;const delta=ts-lastTick;lastTick=ts;update(delta);draw();requestAnimationFrame(loop);}
   function startLoop(){lastTick=null;initPositions();requestAnimationFrame(loop);}
-  function onStart(x,y){if(leaving)return;if(isOnVoltar(x,y)){triggerExit('../');return;}if(hitSmall(x,y)){pressed=true;if(!countdownStarted)countdownStarted=true;}}
+  function onStart(x,y){if(leaving)return;if(isOnVoltar(x,y)){triggerExit('../');return;}pressed=true;if(!countdownStarted)countdownStarted=true;}
   function onEnd(){pressed=false;}
   canvas.addEventListener('mousedown',e=>onStart(e.clientX,e.clientY));
   document.addEventListener('mouseup',onEnd);document.addEventListener('mouseleave',onEnd);
