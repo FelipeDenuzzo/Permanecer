@@ -60,19 +60,24 @@
     setTimeout(()=>{const l=document.getElementById('line2');l.style.opacity='1';l.style.transform='translateY(0)';},1300);
     setTimeout(()=>{hint.style.opacity='1';},2800);
   }
-  function startGame(){
-    if(gameStarted)return;gameStarted=true;playNext();
-    intro.style.transition='opacity 2s ease';intro.style.opacity='0';intro.style.pointerEvents='none';
+  function startGame(e){
+    if(e) e.preventDefault();
+    if(gameStarted)return;
+    gameStarted=true;
+    playNext();
+    intro.style.transition='opacity 2s ease';
+    intro.style.opacity='0';
+    intro.style.pointerEvents='none';
     setTimeout(()=>{intro.style.display='none';enableGame();},2000);
   }
-  intro.addEventListener('click',startGame);
-  intro.addEventListener('touchstart',e=>{e.preventDefault();startGame();},{passive:false});
+  // { once: true } garante disparo único e remove o listener automaticamente
+  intro.addEventListener('click', startGame, { once: true });
+  intro.addEventListener('touchstart', startGame, { once: true, passive: false });
   const flash=document.getElementById('flash'),canvas=document.getElementById('c'),ctx=canvas.getContext('2d'),voltar=document.getElementById('voltar'),quote=document.getElementById('quote');
   setTimeout(()=>{voltar.style.opacity='1';voltar.style.pointerEvents='auto';},10000);
   function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
   resize();window.addEventListener('resize',resize);
   const breathPeriod=8000;
-  // rMin = tamanho original (0.18), rMax = novo tamanho maior (0.32)
   const rMin=()=>Math.min(canvas.width,canvas.height)*0.18;
   const rMax=()=>Math.min(canvas.width,canvas.height)*0.32;
   let count=30,pressing=false,lastTick=null,elapsed=0,leaving=false,quoteVisible=false;
