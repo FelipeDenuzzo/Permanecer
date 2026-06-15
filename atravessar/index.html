@@ -10,37 +10,14 @@
     html, body { width: 100%; height: 100%; overflow: hidden; user-select: none; -webkit-user-select: none; background-color: #ffffff; }
     canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; }
     #flash { position: fixed; inset: 0; background: #ffffff; opacity: 1; transition: opacity 4s ease; pointer-events: none; z-index: 100; }
-
-    #intro {
-      position: fixed; inset: 0;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: flex-start;
-      padding-top: 18vh;
-      z-index: 80; cursor: pointer;
-      opacity: 0; transition: opacity 2.5s ease;
-    }
-    #intro-text {
-      font-family: 'VeteranTypewriter', serif;
-      font-size: 1.05rem; font-weight: 300;
-      letter-spacing: 0.13em; line-height: 2.2;
-      color: rgba(30,28,25,0.70); text-align: center;
-    }
-    #intro-text span {
-      display: block; opacity: 0; transform: translateY(6px);
-      transition: opacity 1.8s ease, transform 1.8s ease;
-    }
-    #intro-hint {
-      margin-top: 2.8rem;
-      font-family: 'VeteranTypewriter', serif;
-      font-size: 0.65rem; letter-spacing: 0.22em;
-      color: rgba(30,28,25,0.28);
-      opacity: 0; transition: opacity 2s ease;
-    }
-
+    #intro { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 18vh; z-index: 80; cursor: pointer; opacity: 0; transition: opacity 2.5s ease; }
+    #intro-text { font-family: 'VeteranTypewriter', serif; font-size: 1.05rem; font-weight: 300; letter-spacing: 0.13em; line-height: 2.2; color: rgba(30,28,25,0.70); text-align: center; }
+    #intro-text span { display: block; opacity: 0; transform: translateY(6px); transition: opacity 1.8s ease, transform 1.8s ease; }
+    #intro-hint { margin-top: 2.8rem; font-family: 'VeteranTypewriter', serif; font-size: 0.65rem; letter-spacing: 0.22em; color: rgba(30,28,25,0.28); opacity: 0; transition: opacity 2s ease; }
     #quote { position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%); text-align: center; font-family: 'VeteranTypewriter', serif; color: rgba(30,28,25,0.75); opacity: 0; transition: opacity 1.2s ease; pointer-events: none; white-space: normal; width: 80vw; max-width: 360px; z-index: 50; }
     #quote .frase { font-size: 0.9rem; letter-spacing: 0.06em; line-height: 1.5; display: block; margin-bottom: 0.4rem; }
     #quote .autor { font-size: 0.72rem; letter-spacing: 0.1em; opacity: 0.6; display: block; }
-    #voltar { position: fixed; bottom: 1.8rem; left: 50%; transform: translateX(-50%); font-family: 'VeteranTypewriter', serif; font-size: 0.85rem; color: rgba(30,28,25,0.5); text-decoration: none; letter-spacing: 0.1em; z-index: 200; padding: 1rem 1.5rem; }
+    #voltar { position: fixed; bottom: 1.8rem; left: 50%; transform: translateX(-50%); font-family: 'VeteranTypewriter', serif; font-size: 0.85rem; color: rgba(30,28,25,0.5); text-decoration: none; letter-spacing: 0.1em; z-index: 200; padding: 1rem 1.5rem; opacity: 0; transition: opacity 1.5s ease; pointer-events: none; }
     #voltar:hover { opacity: 0.3; }
     #mute-btn { position: fixed; top: 1.4rem; right: 1.6rem; background: none; border: none; cursor: pointer; font-family: 'VeteranTypewriter', serif; font-size: 0.72rem; letter-spacing: 0.12em; color: rgba(30,28,25,0.35); z-index: 200; padding: 0.5rem; transition: opacity 0.3s; }
     #mute-btn:hover { opacity: 0.15; }
@@ -49,7 +26,6 @@
 <body>
 <div id="flash"></div>
 <button id="mute-btn" title="silenciar">&#9834;</button>
-
 <div id="intro">
   <div id="intro-text">
     <span id="line1">Mantenha o dedo pressionado,</span>
@@ -58,10 +34,9 @@
   </div>
   <div id="intro-hint">toque para come&#231;ar</div>
 </div>
-
 <canvas id="c"></canvas>
 <div id="quote"><span class="frase"></span><span class="autor"></span></div>
-<a id="voltar" href="../">Permanecer</a>
+<a id="voltar" href="../">Voltar</a>
 <script>
   const cores=['#E6E0CF','#DFDAE6','#D5E6E2','#E6E2D5','#DBD8E6','#D0DDE6','#EBEFFF','#FFDEF0','#E1FFEF'];
   document.body.style.backgroundColor=cores[Math.floor(Math.random()*cores.length)];
@@ -69,7 +44,6 @@
   const escolha=frases[Math.floor(Math.random()*frases.length)];
   document.querySelector('#quote .frase').innerHTML=escolha.html;
   document.querySelector('#quote .autor').textContent=escolha.autor;
-
   const TRACKS=['../audio/1.AAC','../audio/2.AAC','../audio/3.AAC','../audio/4.AAC','../audio/5.AAC'];
   let lastTrack=-1,muted=false;
   const audio=new Audio();audio.volume=0.25;
@@ -79,11 +53,8 @@
   const muteBtn=document.getElementById('mute-btn');
   muteBtn.addEventListener('click',(e)=>{e.stopPropagation();muted=!muted;audio.volume=muted?0:0.25;muteBtn.textContent=muted?'\u266f':'\u266a';muteBtn.style.opacity=muted?'0.18':'';});
   function fadeOutAudio(){const steps=40,duration=2000,interval=duration/steps;const volStep=audio.volume/steps;let s=0;const t=setInterval(()=>{s++;audio.volume=Math.max(0,audio.volume-volStep);if(s>=steps)clearInterval(t);},interval);}
-
-  const intro=document.getElementById('intro');
-  const hint=document.getElementById('intro-hint');
+  const intro=document.getElementById('intro'),hint=document.getElementById('intro-hint');
   let gameStarted=false;
-
   function showIntro(){
     intro.style.opacity='1';
     setTimeout(()=>{const l=document.getElementById('line1');l.style.opacity='1';l.style.transform='translateY(0)';},400);
@@ -91,21 +62,15 @@
     setTimeout(()=>{const l=document.getElementById('line3');l.style.opacity='1';l.style.transform='translateY(0)';},1800);
     setTimeout(()=>{hint.style.opacity='1';},3200);
   }
-
   function startGame(){
-    if(gameStarted)return;
-    gameStarted=true;
-    playNext();
-    intro.style.transition='opacity 2s ease';
-    intro.style.opacity='0';
-    intro.style.pointerEvents='none';
+    if(gameStarted)return;gameStarted=true;playNext();
+    intro.style.transition='opacity 2s ease';intro.style.opacity='0';intro.style.pointerEvents='none';
     setTimeout(()=>{intro.style.display='none';startLoop();},2000);
   }
-
   intro.addEventListener('click',startGame);
   intro.addEventListener('touchstart',e=>{e.preventDefault();startGame();},{passive:false});
-
   const flash=document.getElementById('flash'),canvas=document.getElementById('c'),ctx=canvas.getContext('2d'),voltar=document.getElementById('voltar'),quote=document.getElementById('quote');
+  setTimeout(()=>{voltar.style.opacity='1';voltar.style.pointerEvents='auto';},10000);
   function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
   resize();window.addEventListener('resize',resize);
   const N_LINES=10,TOTAL_TIME=29,COUNT_START=30,CLOSE_SPEED=0.6,LINE_TIME=TOTAL_TIME/N_LINES;
@@ -146,13 +111,8 @@
   canvas.addEventListener('touchend',e=>{e.preventDefault();onEnd();},{passive:false});
   canvas.addEventListener('touchcancel',onEnd);
   voltar.addEventListener('click',e=>{e.preventDefault();triggerExit();});
-
   function startLoop(){lastTick=null;requestAnimationFrame(loop);}
-
-  document.fonts.ready.then(()=>{
-    requestAnimationFrame(()=>flash.style.opacity='0');
-    setTimeout(showIntro,800);
-  });
+  document.fonts.ready.then(()=>{requestAnimationFrame(()=>flash.style.opacity='0');setTimeout(showIntro,800);});
 </script>
 </body>
 </html>
