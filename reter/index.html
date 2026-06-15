@@ -72,11 +72,12 @@
   function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
   resize();window.addEventListener('resize',resize);
   const breathPeriod=8000;
-  const baseRadius=()=>Math.min(canvas.width,canvas.height)*0.32;
-  const breathAmplitude=()=>baseRadius()*0.12;
+  // rMin = tamanho original (0.18), rMax = novo tamanho maior (0.32)
+  const rMin=()=>Math.min(canvas.width,canvas.height)*0.18;
+  const rMax=()=>Math.min(canvas.width,canvas.height)*0.32;
   let count=30,pressing=false,lastTick=null,elapsed=0,leaving=false,quoteVisible=false;
   function updateQuote(){const s=(count<=20&&count>10);if(s&&!quoteVisible){quote.style.opacity='1';quoteVisible=true;}else if(!s&&quoteVisible){quote.style.opacity='0';quoteVisible=false;}}
-  function getRadius(t){const phase=(t%breathPeriod)/breathPeriod;const s=(Math.sin(phase*Math.PI*2-Math.PI/2)+1)/2;return baseRadius()-breathAmplitude()/2+s*breathAmplitude();}
+  function getRadius(t){const phase=(t%breathPeriod)/breathPeriod;const s=(Math.sin(phase*Math.PI*2-Math.PI/2)+1)/2;return rMin()+(rMax()-rMin())*s;}
   function triggerExit(href){if(leaving)return;leaving=true;if(!muted)fadeOutAudio();flash.style.opacity='1';setTimeout(()=>window.location.href=href,4000);}
   function isOnVoltar(x,y){const r=voltar.getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;}
   function draw(ts){if(!lastTick)lastTick=ts;const delta=ts-lastTick;lastTick=ts;elapsed+=delta;if(pressing){count=Math.max(0,count-delta/1000);}else{count=Math.min(30,count+delta/1000);}if(count<=0)triggerExit('../');updateQuote();const cx=canvas.width/2,cy=canvas.height/2,r=getRadius(elapsed);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle='rgba(30,28,25,0.75)';ctx.lineWidth=1.2;ctx.stroke();ctx.fillStyle='rgba(30,28,25,0.75)';ctx.font='2.2rem "VeteranTypewriter", serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(Math.ceil(count),cx,cy);requestAnimationFrame(draw);}
