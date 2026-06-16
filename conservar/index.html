@@ -75,15 +75,16 @@
   const rMin=()=>rInner()+margin();
   const rMax=()=>rOuter()-margin();
 
-  // Zona de perigo: quanto do intervalo (0..1) é considerado "extremidade perigosa"
-  // t=0 = encostou no círculo interno; t=1 = encostou no círculo externo
-  // Zona segura: neutralBand ao redor de 0.5
-  const dangerBand = 0.22; // fora de [dangerBand .. 1-dangerBand] = perigo
+  // Limiares assimétricos:
+  // dangerInner: ativa quando t < 0.22 (próximo ao círculo menor)
+  // dangerOuter: ativa quando t > 1 - 0.12 = 0.88 (só bem perto do círculo maior)
+  const dangerInner = 0.22;
+  const dangerOuter = 0.12;
 
   let t=0.5, speedExpand=0.18, speedRetract=0.18;
   let pressing=false, lastTick=null, count=30, started=false, leaving=false, quoteVisible=false;
 
-  function inDanger(t){ return t < dangerBand || t > (1 - dangerBand); }
+  function inDanger(t){ return t < dangerInner || t > (1 - dangerOuter); }
 
   function updateQuote(){const s=(count<=20&&count>10);if(s&&!quoteVisible){quote.style.opacity='1';quoteVisible=true;}else if(!s&&quoteVisible){quote.style.opacity='0';quoteVisible=false;}}
   function triggerExit(href){if(leaving)return;leaving=true;if(!muted)fadeOutAudio();flash.style.opacity='1';setTimeout(()=>window.location.href=href,4000);}
@@ -97,10 +98,8 @@
       if(pressing){ t=Math.max(0,t-speedRetract*delta); }else{ t=Math.min(1,t+speedExpand*delta); }
 
       if(inDanger(t)){
-        // zona de perigo: contagem sobe de volta para 30
         count=Math.min(30, count+delta);
       } else {
-        // zona segura: contagem desce
         count=Math.max(0, count-delta);
         if(count<=0) triggerExit('../');
       }
@@ -114,19 +113,15 @@
 
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // círculo externo
     ctx.beginPath();ctx.arc(cx,cy,ro,0,Math.PI*2);
     ctx.strokeStyle='rgba(30,28,25,0.7)';ctx.lineWidth=1;ctx.stroke();
 
-    // círculo interno
     ctx.beginPath();ctx.arc(cx,cy,ri,0,Math.PI*2);
     ctx.strokeStyle='rgba(30,28,25,0.7)';ctx.lineWidth=1;ctx.stroke();
 
-    // círculo móvel
     ctx.beginPath();ctx.arc(cx,cy,rm,0,Math.PI*2);
     ctx.strokeStyle='rgba(30,28,25,0.75)';ctx.lineWidth=1.2;ctx.stroke();
 
-    // contador
     if(started){
       ctx.fillStyle='rgba(30,28,25,0.75)';
       ctx.font='2.2rem "VeteranTypewriter", serif';
