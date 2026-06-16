@@ -74,6 +74,7 @@
   function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
   resize();window.addEventListener('resize',resize);
   const N_LINES=10,TOTAL_TIME=29,COUNT_START=30,CLOSE_SPEED=0.6,LINE_TIME=TOTAL_TIME/N_LINES;
+  const CANVAS_FADE_DURATION=0.4;
   function circleR(){return Math.min(canvas.width,canvas.height)*0.055;}
   function marginBottom(){return canvas.height*0.10;}
   function circleStartY(){return canvas.height-marginBottom()-circleR();}
@@ -82,6 +83,7 @@
   function segLen(){return canvas.width*0.38;}
   function lineRestY(i){return linesAreaTop()+(i/(N_LINES-1))*(linesAreaBottom()-linesAreaTop());}
   let pressed=false,progress=0,count=COUNT_START,leaving=false,finished=false,quoteVisible=false;
+  let canvasAlpha=0;
   const lineOpen=new Array(N_LINES).fill(0);
   function lineProgress(i){const order=N_LINES-1-i,t0=order*LINE_TIME,t1=t0+LINE_TIME;if(progress<=t0)return 0;if(progress>=t1)return 1;return(progress-t0)/LINE_TIME;}
   function circleY(){const startY=circleStartY(),endY=linesAreaTop()-circleR()*0.5;return startY-(progress/TOTAL_TIME)*(startY-endY);}
@@ -91,18 +93,22 @@
   function isOnVoltar(x,y){const r=voltar.getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;}
   let lastTick=null,doneTimer=0;
   function loop(ts){if(!lastTick)lastTick=ts;const delta=(ts-lastTick)/1000;lastTick=ts;
+    canvasAlpha=Math.min(1,canvasAlpha+delta/CANVAS_FADE_DURATION);
     if(!finished){if(pressed){progress=Math.min(TOTAL_TIME,progress+delta);count=Math.max(0,count-delta);if(count<=0||progress>=TOTAL_TIME){finished=true;doneTimer=0;}}else{progress=Math.max(0,progress-delta*CLOSE_SPEED);count=Math.min(COUNT_START,count+delta*CLOSE_SPEED);}updateQuote();}else{doneTimer+=delta;if(doneTimer>=1)triggerExit();}
     for(let i=0;i<N_LINES;i++){lineOpen[i]=lineProgress(i);}
     draw();requestAnimationFrame(loop);}
   function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.save();
+    ctx.globalAlpha=canvasAlpha;
     const cx=canvas.width/2,cy=circleY(),r=circleR(),sl=segLen(),edge=canvas.width*0.03;
     ctx.strokeStyle='rgba(30,28,25,0.75)';ctx.lineWidth=1.2;ctx.lineCap='round';
     for(let i=0;i<N_LINES;i++){const open=ease(lineOpen[i]),restY=lineRestY(i),shift=(cx-edge)*open;
       ctx.beginPath();ctx.moveTo(cx-sl-shift,restY);ctx.lineTo(cx-shift,restY);ctx.stroke();
       ctx.beginPath();ctx.moveTo(cx+shift,restY);ctx.lineTo(cx+sl+shift,restY);ctx.stroke();}
     ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
-    if(count<COUNT_START){ctx.save();ctx.fillStyle='rgba(30,28,25,0.75)';ctx.font='1.4rem "VeteranTypewriter", serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(Math.ceil(count),cx,cy);ctx.restore();}}
+    if(count<COUNT_START){ctx.fillStyle='rgba(30,28,25,0.75)';ctx.font='1.4rem "VeteranTypewriter", serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(Math.ceil(count),cx,cy);}
+    ctx.restore();}
   function onStart(x,y){if(leaving||finished)return;if(isOnVoltar(x,y)){triggerExit();return;}pressed=true;}
   function onEnd(){pressed=false;}
   canvas.addEventListener('mousedown',e=>onStart(e.clientX,e.clientY));
@@ -111,7 +117,7 @@
   canvas.addEventListener('touchend',e=>{e.preventDefault();onEnd();},{passive:false});
   canvas.addEventListener('touchcancel',onEnd);
   voltar.addEventListener('click',e=>{e.preventDefault();triggerExit();});
-  function startLoop(){lastTick=null;requestAnimationFrame(loop);}
+  function startLoop(){lastTick=null;canvasAlpha=0;requestAnimationFrame(loop);}
   document.fonts.ready.then(()=>{requestAnimationFrame(()=>flash.style.opacity='0');setTimeout(showIntro,800);});
 </script>
 </body>
